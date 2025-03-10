@@ -1,0 +1,23 @@
+.home-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+  padding: 1rem;
+
+  mat-card {
+    max-width: 25rem;
+    text-align: center;
+
+    mat-card-content {
+      margin: 1rem 0;
+    }
+
+    mat-card-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem;
+    }
+  }
+}
