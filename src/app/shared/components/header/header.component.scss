@@ -1,0 +1,86 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 4rem;
+
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 75rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .brand {
+    .logo-link {
+      text-decoration: none;
+      color: white;
+      display: flex;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+  }
+
+  .main-nav {
+    display: flex;
+    gap: 0.5rem; // 8px
+
+    @media (max-width: 48rem) {
+      display: none;
+    }
+
+    a.active {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .quick-book-btn {
+      margin-right: 0.5rem;
+
+      @media (max-width: 48rem) {
+        span {
+          display: none;
+        }
+      }
+    }
+
+    .user-menu-trigger {
+      display: flex;
+      align-items: center;
+
+      .user-name {
+        max-width: 7.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        @media (max-width: 48rem) {
+          max-width: 5rem;
+        }
+      }
+    }
+  }
+}
+
+.notification-item {
+  padding: 0.5rem 1rem;
+  min-width: 15rem;
+
+  .empty-notifications {
+    color: #888;
+    text-align: center;
+    margin: 0.5rem 0;
+  }
+}

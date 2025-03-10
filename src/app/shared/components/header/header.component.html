@@ -1,1 +1,105 @@
-<p>header works!</p>
+<mat-toolbar color="primary" class="header">
+  <div class="header-container">
+    <!-- Logo & Brand -->
+    <div class="brand">
+      <a routerLink="/" class="logo-link">
+        <span class="logo">Roomfull</span>
+      </a>
+    </div>
+
+    <!-- Main Nav - content based on current user-role (admin or customer) -->
+    <nav class="main-nav">
+      <!-- Links for all authenticated users -->
+      <ng-container *ngIf="authService.user$ | async as user">
+        <!-- Kunde Navigation -->
+        <ng-container *ngIf="!authService.isAdmin(user)">
+          <a mat-button routerLink="/rooms" routerLinkActive="active">Räume</a>
+          <a mat-button routerLink="/bookings" routerLinkActive="active"
+            >Meine Buchungen</a
+          >
+        </ng-container>
+
+        <!-- Admin Nav -->
+        <ng-container *ngIf="authService.isAdmin(user)">
+          <a mat-button routerLink="/admin/dashboard" routerLinkActive="active"
+            >Dashboard</a
+          >
+          <a mat-button routerLink="/admin/rooms" routerLinkActive="active"
+            >Raumverwaltung</a
+          >
+          <a mat-button routerLink="/admin/bookings" routerLinkActive="active"
+            >Buchungen</a
+          >
+          <a mat-button routerLink="/admin/users" routerLinkActive="active"
+            >Benutzer</a
+          >
+        </ng-container>
+      </ng-container>
+    </nav>
+
+    <!-- right hand side: actions & user-menu -->
+    <div class="actions">
+      <!-- Quick-Booking for customers -->
+      <ng-container
+        *ngIf="
+          (authService.user$ | async) &&
+          !authService.isAdmin(authService.user$ | async)
+        "
+      >
+        <button
+          mat-raised-button
+          color="accent"
+          routerLink="/rooms/book"
+          class="quick-book-btn"
+        >
+          <mat-icon>add</mat-icon> Buchen
+        </button>
+      </ng-container>
+
+      <!-- Notifications -->
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="notificationMenu"
+        aria-label="Benachrichtigungen"
+      >
+        <mat-icon [matBadge]="'0'" matBadgeColor="warn" matBadgeSize="small"
+          >notifications</mat-icon
+        >
+      </button>
+      <mat-menu #notificationMenu="matMenu" xPosition="before">
+        <div class="notification-item">
+          <p class="empty-notifications">Keine neuen Benachrichtigungen</p>
+        </div>
+      </mat-menu>
+
+      <!-- user-menu -->
+      <ng-container *ngIf="authService.user$ | async as user; else loginButton">
+        <button
+          mat-button
+          [matMenuTriggerFor]="userMenu"
+          class="user-menu-trigger"
+        >
+          <span class="user-name">{{ user.displayName }}</span>
+          <mat-icon>arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #userMenu="matMenu" xPosition="before">
+          <a mat-menu-item routerLink="/profile">
+            <mat-icon>account_circle</mat-icon>
+            <span>Profil</span>
+          </a>
+          <button mat-menu-item (click)="authService.logout()">
+            <mat-icon>exit_to_app</mat-icon>
+            <span>Abmelden</span>
+          </button>
+        </mat-menu>
+      </ng-container>
+
+      <!-- Login-Button for not logged in users -->
+      <ng-template #loginButton>
+        <a mat-button routerLink="/auth/login" class="login-btn">
+          <mat-icon>login</mat-icon> Anmelden
+        </a>
+      </ng-template>
+    </div>
+  </div>
+</mat-toolbar>
