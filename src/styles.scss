@@ -1,40 +1,32 @@
+// Custom Theming für Angular Material
+@use "@angular/material" as mat;
+@use "../m3-theme.scss" as theme;
 
-// Custom Theming for Angular Material
-// For more information: https://material.angular.io/guide/theming
-@use '@angular/material' as mat;
-// Plus imports for other components in your app.
-
-// Include the common styles for Angular Material. We include this here so that you only
-// have to load a single css file for Angular Material in your app.
-// Be sure that you only ever include this mixin once!
+// Die Core-Styles für Angular Material
 @include mat.core();
 
-// Define the theme object.
-$roomfull-theme: mat.define-theme((
-  color: (
-    theme-type: light,
-    primary: mat.$azure-palette,
-    tertiary: mat.$blue-palette,
-  ),
-  density: (
-    scale: 0,
-  )
-));
-
-// Include theme styles for core and each component used in your app.
-// Alternatively, you can import and @include the theme mixins for each component
-// that you are using.
+// Light-Theme als Standard aktivieren
 :root {
-  @include mat.all-component-themes($roomfull-theme);
+  @include mat.all-component-themes(theme.$light-theme);
+
+  // WICHTIG: Diese Zeilen generieren die CSS-Variablen (--sys-*)
+  @include mat.system-level-colors(theme.$light-theme);
+  @include mat.system-level-typography(theme.$light-theme);
 }
 
-// Comment out the line below if you want to use the pre-defined typography utility classes.
-// For more information: https://material.angular.io/guide/typography#using-typography-styles-in-your-application.
-// @include mat.typography-hierarchy($roomfull-theme);
+// Dark-Theme-Klasse definieren
+.dark-theme {
+  @include mat.all-component-themes(theme.$dark-theme);
 
-// Comment out the line below if you want to use the deprecated `color` inputs.
-// @include mat.color-variants-backwards-compatibility($roomfull-theme);
-/* You can add global styles to this file, and also import other style files */
+  // WICHTIG: Diese Zeilen auch für das Dark-Theme
+  @include mat.system-level-colors(theme.$dark-theme);
+  @include mat.system-level-typography(theme.$dark-theme);
+}
 
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+// Basis-Styles
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
