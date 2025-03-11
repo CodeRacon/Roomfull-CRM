@@ -1,8 +1,10 @@
 .header {
+  background: var(--mat-primary-container);
   position: sticky;
   top: 0;
   z-index: 1000;
   height: 4rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 
   .header-container {
     display: flex;
@@ -10,14 +12,13 @@
     align-items: center;
     width: 100%;
     max-width: 75rem;
-    margin: 0 auto;
     padding: 0 1rem;
   }
 
   .brand {
     .logo-link {
       text-decoration: none;
-      color: white;
+      color: var(--mat-primary-on-container);
       display: flex;
       align-items: center;
     }
@@ -25,19 +26,30 @@
     .logo {
       font-size: 1.5rem;
       font-weight: 700;
+      letter-spacing: 1px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
   }
 
   .main-nav {
     display: flex;
-    gap: 0.5rem; // 8px
+    gap: 0.5rem;
 
     @media (max-width: 48rem) {
       display: none;
     }
 
-    a.active {
-      background-color: rgba(255, 255, 255, 0.15);
+    a {
+      color: var(--mat-primary-on-container);
+      font-weight: 500;
+
+      &.active {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+      }
     }
   }
 
@@ -48,6 +60,13 @@
 
     .quick-book-btn {
       margin-right: 0.5rem;
+      background-color: var(--mat-tertiary-container);
+      color: var(--mat-tertiary-on-container);
+      font-weight: 600;
+
+      &:hover {
+        background-color: var(--mat-tertiary-container-dark);
+      }
 
       @media (max-width: 48rem) {
         span {
@@ -59,6 +78,7 @@
     .user-menu-trigger {
       display: flex;
       align-items: center;
+      color: var(--mat-primary-on-container);
 
       .user-name {
         max-width: 7.5rem;
@@ -74,12 +94,31 @@
   }
 }
 
+::ng-deep .mat-mdc-menu-panel {
+  background-color: var(--mat-surface-container-highest) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--mat-primary-container-outline);
+  border-radius: 8px !important;
+
+  .mat-mdc-menu-item {
+    color: var(--mat-on-surface);
+
+    &:hover {
+      background-color: var(--mat-surface-container-highest-hover);
+    }
+
+    .mat-icon {
+      color: var(--mat-primary-container);
+    }
+  }
+}
+
 .notification-item {
   padding: 0.5rem 1rem;
   min-width: 15rem;
 
   .empty-notifications {
-    color: #888;
+    color: var(--mat-on-surface-variant);
     text-align: center;
     margin: 0.5rem 0;
   }
