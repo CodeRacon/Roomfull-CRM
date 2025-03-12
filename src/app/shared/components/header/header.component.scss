@@ -1,12 +1,10 @@
 .header {
-  background: var(--sys-primary); // Primärfarbe aus dem Theme
+  background: var(--sys-tertiary);
   position: sticky;
   top: 0;
   z-index: 1000;
   height: 4rem;
-  box-shadow: var(
-    --mat-app-elevation-shadow-level-3
-  ); // Schatten aus Material Design
+  box-shadow: var(--mat-app-elevation-shadow-level-3);
 
   .header-container {
     display: flex;
@@ -14,17 +12,14 @@
     align-items: center;
     width: 100%;
     max-width: 75rem;
-    margin: 0 auto; // Zentrieren des Containers
+    margin: 0 auto;
     padding: 0 1rem;
   }
 
   .brand {
     .logo-link {
       text-decoration: none;
-      color: var(
-        --sys-on-primary
-      ); // Textfarbe, die auf Primärfarbe gut lesbar ist
-      display: flex;
+      color: var(--sys-on-primary);
       align-items: center;
     }
 
@@ -71,7 +66,7 @@
       font-weight: 600;
 
       &:hover {
-        filter: brightness(0.95); // Leicht abdunkeln beim Hover
+        filter: brightness(0.95);
       }
 
       @media (max-width: 48rem) {
@@ -101,9 +96,7 @@
 }
 
 ::ng-deep .mat-mdc-menu-panel {
-  // background-color: var(--sys-surface-container) !important;
   backdrop-filter: blur(10px);
-  // border: 1px solid var(--sys-outline-variant);
   border-radius: 8px !important;
 
   .mat-mdc-menu-item {
@@ -114,7 +107,7 @@
     }
 
     .mat-icon {
-      color: var(--sys-primary);
+      color: var(--sys-secondary);
     }
   }
 }
