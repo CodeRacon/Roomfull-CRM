@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
   user,
   User as FirebaseUser,
 } from '@angular/fire/auth';
@@ -92,5 +93,10 @@ export class AuthService {
   // helper-method to proof, whether user is admin
   isAdmin(user: User | null): boolean {
     return user?.role === 'admin';
+  }
+
+  // send Mail to reset password when forgotten
+  resetPassword(email: string): Observable<void> {
+    return from(sendPasswordResetEmail(this.auth, email));
   }
 }
