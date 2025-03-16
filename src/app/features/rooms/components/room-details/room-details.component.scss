@@ -1,0 +1,143 @@
+.room-details-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.room-header {
+  margin-bottom: 30px;
+
+  h1 {
+    font-size: 2.5rem;
+    margin: 16px 0;
+    color: var(--sys-primary);
+  }
+
+  .back-button {
+    margin-bottom: 16px;
+  }
+
+  .room-type-chip {
+    margin-bottom: 16px;
+  }
+}
+
+.room-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+
+  .room-info-card,
+  .booking-card {
+    height: 100%;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--sys-on-surface);
+  }
+
+  .room-description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  mat-divider {
+    margin: 24px 0;
+  }
+}
+
+.booking-card {
+  .booking-info {
+    margin-bottom: 24px;
+  }
+
+  .price-highlight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 24px 0;
+
+    .price {
+      font-size: 2.5rem;
+      font-weight: 500;
+      color: var(--sys-tertiary);
+    }
+
+    .per-hour {
+      font-size: 1rem;
+      color: var(--sys-on-surface-variant);
+    }
+  }
+
+  .book-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 1.1rem;
+  }
+
+  .admin-divider {
+    margin: 32px 0 16px;
+  }
+
+  .admin-actions {
+    h3 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      color: var(--sys-on-surface-variant);
+    }
+
+    .admin-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+
+  mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    margin-bottom: 16px;
+    color: var(--sys-on-surface-variant);
+  }
+
+  p {
+    margin-bottom: 24px;
+    color: var(--sys-on-surface-variant);
+  }
+}
+
+.error-container {
+  mat-icon {
+    color: var(--sys-error);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .room-content {
+    grid-template-columns: 1fr;
+  }
+
+  .room-header h1 {
+    font-size: 2rem;
+  }
+}

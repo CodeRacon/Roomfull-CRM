@@ -1,1 +1,130 @@
-<p>room-details works!</p>
+<div class="room-details-container">
+  <ng-container *ngIf="room$ | async as room; else loading">
+    <div class="room-header">
+      <div class="back-button">
+        <a mat-button routerLink="/rooms">
+          <mat-icon>arrow_back</mat-icon> Back to Rooms
+        </a>
+      </div>
+
+      <h1>{{ room.name }}</h1>
+
+      <div class="room-type-chip">
+        <mat-chip-set>
+          <mat-chip>
+            <mat-icon>{{ getRoomTypeIcon(room.type) }}</mat-icon>
+            {{ getRoomTypeLabel(room.type) }}
+          </mat-chip>
+          <mat-chip>
+            <mat-icon>people</mat-icon>
+            {{ room.capacity }} people
+          </mat-chip>
+        </mat-chip-set>
+      </div>
+    </div>
+
+    <div class="room-content">
+      <mat-card class="room-info-card">
+        <mat-card-content>
+          <h2>About this room</h2>
+          <p class="room-description">{{ room.description }}</p>
+
+          <mat-divider></mat-divider>
+
+          <h2>Details</h2>
+          <mat-list>
+            <mat-list-item>
+              <mat-icon matListItemIcon>euro</mat-icon>
+              <div matListItemTitle>Price per hour</div>
+              <div matListItemLine>{{ formatPrice(room.pricePerHour) }}</div>
+            </mat-list-item>
+
+            <mat-list-item *ngIf="room.pricePerDay">
+              <mat-icon matListItemIcon>calendar_today</mat-icon>
+              <div matListItemTitle>Price per day</div>
+              <div matListItemLine>{{ formatPrice(room.pricePerDay) }}</div>
+            </mat-list-item>
+
+            <mat-list-item *ngIf="room.pricePerWeek">
+              <mat-icon matListItemIcon>date_range</mat-icon>
+              <div matListItemTitle>Price per week</div>
+              <div matListItemLine>{{ formatPrice(room.pricePerWeek) }}</div>
+            </mat-list-item>
+
+            <mat-list-item>
+              <mat-icon matListItemIcon>schedule</mat-icon>
+              <div matListItemTitle>Minimum duration</div>
+              <div matListItemLine>{{ room.minDuration }} minutes</div>
+            </mat-list-item>
+
+            <mat-list-item *ngIf="room.discountPercentage">
+              <mat-icon matListItemIcon>local_offer</mat-icon>
+              <div matListItemTitle>Discount</div>
+              <div matListItemLine>{{ room.discountPercentage }}%</div>
+            </mat-list-item>
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="booking-card">
+        <mat-card-content>
+          <h2>Book this room</h2>
+          <p class="booking-info">
+            This room is available for booking with a minimum duration of
+            {{ room.minDuration }} minutes.
+          </p>
+
+          <div class="price-highlight">
+            <span class="price">{{ formatPrice(room.pricePerHour) }}</span>
+            <span class="per-hour">per hour</span>
+          </div>
+
+          <button
+            mat-raised-button
+            color="primary"
+            class="book-button"
+            [routerLink]="['/rooms/book', room.id]"
+          >
+            BOOK NOW
+          </button>
+
+          <!-- Admin actions -->
+          <ng-container *ngIf="isAdmin$ | async">
+            <mat-divider class="admin-divider"></mat-divider>
+            <div class="admin-actions">
+              <h3>Admin Actions</h3>
+              <div class="admin-buttons">
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  [routerLink]="['/admin/rooms/edit', room.id]"
+                >
+                  <mat-icon>edit</mat-icon> EDIT ROOM
+                </button>
+                <button mat-stroked-button color="warn">
+                  <mat-icon>delete</mat-icon> DELETE ROOM
+                </button>
+              </div>
+            </div>
+          </ng-container>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </ng-container>
+
+  <ng-template #loading>
+    <div *ngIf="!error" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading room details...</p>
+    </div>
+
+    <div *ngIf="error" class="error-container">
+      <mat-icon>error_outline</mat-icon>
+      <h2>Error</h2>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" routerLink="/rooms">
+        Go Back to Rooms
+      </button>
+    </div>
+  </ng-template>
+</div>
