@@ -1,1 +1,166 @@
-<p>room-booking works!</p>
+<div class="booking-container">
+  <div class="back-button">
+    <a mat-button routerLink="/rooms">
+      <mat-icon>arrow_back</mat-icon> Zurück zur Raumübersicht
+    </a>
+  </div>
+
+  <ng-container *ngIf="room$ | async as room; else loading">
+    <div class="booking-header">
+      <h1>Raum buchen: {{ room.name }}</h1>
+      <p class="room-type">
+        {{ getRoomTypeLabel(room.type) }} | Kapazität:
+        {{ room.capacity }} Personen
+      </p>
+    </div>
+
+    <div class="booking-content">
+      <mat-card class="room-info-card">
+        <mat-card-content>
+          <h2>Rauminformationen</h2>
+          <p class="room-description">{{ room.description }}</p>
+
+          <div class="room-details">
+            <div class="detail-item">
+              <mat-icon>euro</mat-icon>
+              <span
+                >Preis pro Stunde: {{ formatPrice(room.pricePerHour) }}</span
+              >
+            </div>
+
+            <div class="detail-item">
+              <mat-icon>schedule</mat-icon>
+              <span>Mindestbuchungsdauer: {{ room.minDuration }} Minuten</span>
+            </div>
+
+            <div *ngIf="room.discountPercentage" class="detail-item discount">
+              <mat-icon>local_offer</mat-icon>
+              <span>Rabatt: {{ room.discountPercentage }}%</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="booking-form-card">
+        <mat-card-content>
+          <h2>Buchungsdetails</h2>
+
+          <form [formGroup]="bookingForm" (ngSubmit)="onSubmit()">
+            <!-- Datum auswählen -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Datum</mat-label>
+              <input
+                matInput
+                [matDatepicker]="picker"
+                formControlName="date"
+                [min]="minDate"
+              />
+              <mat-datepicker-toggle
+                matIconSuffix
+                [for]="picker"
+              ></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+              <mat-error *ngIf="bookingForm.get('date')?.hasError('required')">
+                Bitte wähle ein Datum aus
+              </mat-error>
+            </mat-form-field>
+
+            <!-- Zeitraum auswählen -->
+            <div class="time-range">
+              <mat-form-field appearance="outline">
+                <mat-label>Startzeit</mat-label>
+                <mat-select formControlName="startTime">
+                  <mat-option *ngFor="let time of timeSlots" [value]="time">
+                    {{ time }}
+                  </mat-option>
+                </mat-select>
+                <mat-error
+                  *ngIf="bookingForm.get('startTime')?.hasError('required')"
+                >
+                  Bitte wähle eine Startzeit aus
+                </mat-error>
+              </mat-form-field>
+
+              <mat-icon>arrow_forward</mat-icon>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Endzeit</mat-label>
+                <mat-select formControlName="endTime">
+                  <mat-option *ngFor="let time of timeSlots" [value]="time">
+                    {{ time }}
+                  </mat-option>
+                </mat-select>
+                <mat-error
+                  *ngIf="bookingForm.get('endTime')?.hasError('required')"
+                >
+                  Bitte wähle eine Endzeit aus
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div
+              *ngIf="bookingForm.hasError('invalidTimeRange')"
+              class="error-message"
+            >
+              Die Endzeit muss nach der Startzeit liegen
+            </div>
+
+            <!-- Notizen -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Notizen (optional)</mat-label>
+              <textarea matInput formControlName="notes" rows="3"></textarea>
+            </mat-form-field>
+
+            <!-- Preisberechnung -->
+            <div class="price-calculation" *ngIf="calculatedPrice > 0">
+              <h3>Preisberechnung</h3>
+              <div class="price-box">
+                <span class="price-label">Gesamtpreis:</span>
+                <span class="price-value">{{
+                  formatPrice(calculatedPrice)
+                }}</span>
+              </div>
+            </div>
+
+            <!-- Fehlermeldung -->
+            <div *ngIf="error" class="error-message">
+              {{ error }}
+            </div>
+
+            <!-- Buchungsbutton -->
+            <div class="form-actions">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="bookingForm.invalid || loading"
+                class="book-button"
+              >
+                <mat-icon>event_available</mat-icon>
+                {{ loading ? "Buchung wird erstellt..." : "Jetzt buchen" }}
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </ng-container>
+
+  <!-- Loading-Zustand -->
+  <ng-template #loading>
+    <div *ngIf="!error" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Rauminformationen werden geladen...</p>
+    </div>
+
+    <!-- Fehler-Zustand -->
+    <div *ngIf="error" class="error-container">
+      <mat-icon>error_outline</mat-icon>
+      <h2>Fehler</h2>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" routerLink="/rooms">
+        Zurück zur Raumübersicht
+      </button>
+    </div>
+  </ng-template>
+</div>

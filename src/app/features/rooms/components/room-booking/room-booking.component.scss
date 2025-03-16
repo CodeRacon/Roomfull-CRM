@@ -1,0 +1,191 @@
+.booking-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.back-button {
+  margin-bottom: 16px;
+
+  a {
+    color: var(--sys-primary);
+  }
+}
+
+.booking-header {
+  margin-bottom: 30px;
+
+  h1 {
+    font-size: 2rem;
+    margin: 0 0 8px 0;
+    color: var(--sys-primary);
+  }
+
+  .room-type {
+    font-size: 1.1rem;
+    color: var(--sys-on-surface-variant);
+    margin: 0;
+  }
+}
+
+.booking-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+
+  .room-info-card,
+  .booking-form-card {
+    height: 100%;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--sys-on-surface);
+  }
+
+  .room-description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+}
+
+.room-details {
+  .detail-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+
+    mat-icon {
+      margin-right: 8px;
+      color: var(--sys-primary);
+    }
+
+    &.discount {
+      color: var(--sys-tertiary);
+      font-weight: 500;
+    }
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+.time-range {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  mat-form-field {
+    flex: 1;
+  }
+
+  mat-icon {
+    color: var(--sys-on-surface-variant);
+  }
+}
+
+.price-calculation {
+  background-color: var(--sys-primary-container);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 24px 0;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.2rem;
+    color: var(--sys-on-primary-container);
+  }
+
+  .price-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .price-label {
+      font-size: 1.1rem;
+      color: var(--sys-on-primary-container);
+    }
+
+    .price-value {
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--sys-tertiary);
+    }
+  }
+}
+
+.form-actions {
+  margin-top: 24px;
+
+  .book-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 1.1rem;
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+.error-message {
+  background-color: var(--sys-error-container);
+  color: var(--sys-on-error-container);
+  padding: 12px;
+  border-radius: 4px;
+  margin: 16px 0;
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+
+  mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    margin-bottom: 16px;
+    color: var(--sys-on-surface-variant);
+  }
+
+  p {
+    margin-bottom: 24px;
+    color: var(--sys-on-surface-variant);
+  }
+}
+
+.error-container {
+  mat-icon {
+    color: var(--sys-error);
+  }
+}
+
+// Responsive Adjustments
+.booking-content {
+  grid-template-columns: 1fr;
+}
+
+.time-range {
+  flex-direction: column;
+  gap: 8px;
+
+  mat-icon {
+    transform: rotate(90deg);
+    margin: 8px 0;
+  }
+}
+
+.booking-header h1 {
+  font-size: 1.8rem;
+}
