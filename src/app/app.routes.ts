@@ -39,21 +39,21 @@ export const routes: Routes = [
       },
     ],
   },
-  // Geschützte Routen für angemeldete Benutzer
+  // public accessible room-routes (without AuthGuard)
+  {
+    path: 'rooms',
+    loadChildren: () =>
+      import('./features/rooms/rooms-routing.module').then(
+        (m) => m.RoomsRoutingModule
+      ),
+  },
+  // protected routes for logged in users
   {
     path: 'profile',
     canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/profile/profile-routing.module').then(
         (m) => m.ProfileRoutingModule
-      ),
-  },
-  {
-    path: 'rooms',
-    canActivate: [AuthGuard],
-    loadChildren: () =>
-      import('./features/rooms/rooms-routing.module').then(
-        (m) => m.RoomsRoutingModule
       ),
   },
   {
@@ -64,7 +64,7 @@ export const routes: Routes = [
         (m) => m.BookingsRoutingModule
       ),
   },
-  // Admin-Bereich, geschützt durch AdminGuard
+  // admin-area, protected via AdminGuard
   {
     path: 'admin',
     canActivate: [AuthGuard, AdminGuard],
