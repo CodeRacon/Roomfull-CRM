@@ -156,7 +156,6 @@ export class BookingService {
   }
 
   // Check if a room is available for a specific time period
-  // Check if a room is available for a specific time period
   checkRoomAvailability(
     roomId: string,
     startTime: Date,
@@ -165,16 +164,30 @@ export class BookingService {
     const bookingsCollection = collection(this.firestore, this.collectionName);
 
     // Query for any bookings that overlap with the requested time period
-    const overlappingBookingsQuery = query(
+    // Firestore doesn't support multiple range queries, so we'll filter in memory
+    const roomBookingsQuery = query(
       bookingsCollection,
       where('roomId', '==', roomId),
-      where('status', '!=', 'cancelled'),
-      where('startTime', '<', endTime),
-      where('endTime', '>', startTime)
+      where('status', '!=', 'cancelled')
     );
 
-    return collectionData(overlappingBookingsQuery).pipe(
-      map((bookings) => bookings.length === 0) // Return true if no overlapping bookings found
+    return collectionData(roomBookingsQuery).pipe(
+      map((bookings) => {
+        // Filter overlapping bookings in memory
+        const overlappingBookings = bookings.filter((booking) => {
+          const bookingStart = booking['startTime'].toDate
+            ? booking['startTime'].toDate()
+            : new Date(booking['startTime']);
+          const bookingEnd = booking['endTime'].toDate
+            ? booking['endTime'].toDate()
+            : new Date(booking['endTime']);
+
+          // Check if bookings overlap
+          return bookingStart < endTime && bookingEnd > startTime;
+        });
+
+        return overlappingBookings.length === 0; // Return true if no overlapping bookings found
+      })
     );
   }
 
