@@ -26,12 +26,12 @@ import { Room } from '../../../../core/models/room.model';
 import {
   Observable,
   catchError,
-  combineLatest,
   map,
   of,
   startWith,
   switchMap,
   tap,
+  take,
 } from 'rxjs';
 
 @Component({
@@ -98,6 +98,8 @@ export class RoomBookingComponent implements OnInit {
 
   ngOnInit(): void {
     // Get room ID from route parameters and load room details
+    this.loading = false;
+
     this.room$ = this.route.paramMap.pipe(
       map((params) => params.get('id')),
       switchMap((id) => {
@@ -241,18 +243,18 @@ export class RoomBookingComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    // First check if the user is authenticated
+    // VEREINFACHTE STRUKTUR mit klarer Abfolge
     this.authService.user$
       .pipe(
+        take(1), // Wichtig: Nur einmal ausführen
         switchMap((user) => {
           if (!user) {
-            // Redirect to login if not authenticated
             this.router.navigate(['/auth/login']);
             return of(null);
           }
 
-          // Then check availability
           return this.checkAvailability().pipe(
+            take(1), // Wichtig: Nur einmal ausführen
             switchMap((isAvailable) => {
               if (!isAvailable) {
                 this.error =
@@ -261,8 +263,8 @@ export class RoomBookingComponent implements OnInit {
                 return of(null);
               }
 
-              // If available, create the booking
               return this.room$.pipe(
+                take(1), // Wichtig: Nur einmal ausführen
                 switchMap((room) => {
                   if (!room) {
                     this.error = 'Room not found';
@@ -280,33 +282,32 @@ export class RoomBookingComponent implements OnInit {
                     formValue.endTime
                   );
 
-                  return this.bookingService
-                    .createBooking({
-                      roomId: room.id!,
-                      startTime: startDateTime,
-                      endTime: endDateTime,
-                      notes: formValue.notes,
-                    })
-                    .pipe(
-                      tap((bookingId) => {
-                        this.success = true;
-                        this.loading = false;
-                        // Navigate to booking details or confirmation page
-                        this.router.navigate(['/bookings', bookingId]);
-                      }),
-                      catchError((err) => {
-                        this.error = `Error creating booking: ${err.message}`;
-                        this.loading = false;
-                        return of(null);
-                      })
-                    );
+                  return this.bookingService.createBooking({
+                    roomId: room.id!,
+                    startTime: startDateTime,
+                    endTime: endDateTime,
+                    notes: formValue.notes,
+                  });
                 })
               );
             })
           );
+        }),
+        // Wichtig: Behandle das Ergebnis außerhalb der verschachtelten switchMaps
+        tap((bookingId) => {
+          if (bookingId) {
+            this.success = true;
+            this.loading = false;
+            this.router.navigate(['/bookings', bookingId]);
+          }
         })
       )
-      .subscribe();
+      .subscribe({
+        error: (err) => {
+          this.error = `Error: ${err.message}`;
+          this.loading = false;
+        },
+      });
   }
 
   // Format price for display
