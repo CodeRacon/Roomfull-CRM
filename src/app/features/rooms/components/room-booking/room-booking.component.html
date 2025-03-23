@@ -5,7 +5,7 @@
     </a>
   </div>
 
-  <ng-container *ngIf="room$ | async as room; else loading">
+  <ng-container *ngIf="room$ | async as room; else loadingTemplate">
     <div class="booking-header">
       <h1>Raum buchen: {{ room.name }}</h1>
       <p class="room-type">
@@ -46,7 +46,7 @@
           <h2>Buchungsdetails</h2>
 
           <form [formGroup]="bookingForm" (ngSubmit)="onSubmit()">
-            <!-- Datum auswählen -->
+            <!-- choose Date -->
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Datum</mat-label>
               <input
@@ -65,7 +65,7 @@
               </mat-error>
             </mat-form-field>
 
-            <!-- Zeitraum auswählen -->
+            <!-- choose time-range -->
             <div class="time-range">
               <mat-form-field appearance="outline">
                 <mat-label>Startzeit</mat-label>
@@ -105,13 +105,13 @@
               Die Endzeit muss nach der Startzeit liegen
             </div>
 
-            <!-- Notizen -->
+            <!-- Notes -->
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Notizen (optional)</mat-label>
               <textarea matInput formControlName="notes" rows="3"></textarea>
             </mat-form-field>
 
-            <!-- Preisberechnung -->
+            <!-- Price-calculation -->
             <div class="price-calculation" *ngIf="calculatedPrice > 0">
               <h3>Preisberechnung</h3>
               <div class="price-box">
@@ -122,12 +122,12 @@
               </div>
             </div>
 
-            <!-- Fehlermeldung -->
+            <!-- Error-Message -->
             <div *ngIf="error" class="error-message">
               {{ error }}
             </div>
 
-            <!-- Buchungsbutton -->
+            <!-- Booking-Button -->
             <div class="form-actions">
               <button
                 mat-raised-button
@@ -146,14 +146,14 @@
     </div>
   </ng-container>
 
-  <!-- Loading-Zustand -->
-  <ng-template #loading>
+  <!-- Loading-Status -->
+  <ng-template #loadingTemplate>
     <div *ngIf="!error" class="loading-container">
       <mat-spinner diameter="40"></mat-spinner>
       <p>Rauminformationen werden geladen...</p>
     </div>
 
-    <!-- Fehler-Zustand -->
+    <!-- Error-Status -->
     <div *ngIf="error" class="error-container">
       <mat-icon>error_outline</mat-icon>
       <h2>Fehler</h2>
