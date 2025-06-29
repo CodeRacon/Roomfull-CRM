@@ -12,8 +12,8 @@ const routes: Routes = [
   {
     path: 'edit',
     loadComponent: () =>
-      import('./components/profile-details/profile-details.component').then(
-        (m) => m.ProfileDetailsComponent
+      import('./components/profile-edit/profile-edit.component').then(
+        (m) => m.ProfileEditComponent
       ),
   },
 ];
