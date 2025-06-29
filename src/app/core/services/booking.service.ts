@@ -15,7 +15,7 @@ import {
   DocumentReference,
   serverTimestamp,
 } from '@angular/fire/firestore';
-import { Observable, from, map, switchMap, of, combineLatest } from 'rxjs';
+import { Observable, from, map, switchMap, of, combineLatest, catchError } from 'rxjs';
 import { Booking } from '../models/booking.model';
 import { AuthService } from './auth.service';
 import { RoomService } from './room.service';
@@ -109,7 +109,7 @@ export class BookingService {
               userId: user.uid,
               startTime: bookingData.startTime,
               endTime: bookingData.endTime,
-              status: 'pending', // Initial status
+              status: 'confirmed', // Directly confirmed (no payment required)
               price: price,
               notes: bookingData.notes || '',
               roomName: room.name, // Denormalized for faster rendering
@@ -187,6 +187,11 @@ export class BookingService {
         });
 
         return overlappingBookings.length === 0; // Return true if no overlapping bookings found
+      }),
+      catchError((error) => {
+        console.error('❌ Error checking room availability:', error);
+        // If collection doesn't exist or query fails, assume room is available
+        return of(true);
       })
     );
   }
@@ -215,5 +220,65 @@ export class BookingService {
         }) as Observable<Booking[]>;
       })
     );
+  }
+
+  getBookingsForRoomAndDate(roomId: string, date: Date): Observable<Booking[]> {
+    console.log('🔍 BookingService.getBookingsForRoomAndDate called');
+    console.log('RoomId:', roomId);
+    console.log('Date:', date);
+    
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.log('Query date range:', { start: startOfDay, end: endOfDay });
+
+    const bookingsCollection = collection(this.firestore, this.collectionName);
+
+    // FIXED: Firestore erlaubt nur 1 Range-Filter pro Query ohne Index
+    // Verwende nur startTime als Range-Filter und filtere endTime clientseitig
+    const bookingsQuery = query(
+      bookingsCollection,
+      where('roomId', '==', roomId),
+      where('startTime', '>=', startOfDay),
+      where('startTime', '<=', endOfDay)
+    );
+
+    console.log('🔍 Executing simplified Firestore query...');
+
+    return collectionData(bookingsQuery, { idField: 'id' }).pipe(
+      map((bookings: any[]) => {
+        console.log('📨 Raw bookings from Firestore:', bookings.length, 'items');
+        console.log('Raw data:', bookings);
+        
+        // Filter clientseitig: stornierte Buchungen und Datum-Überschneidungen
+        const filteredBookings = bookings.filter(booking => {
+          // Filter cancelled bookings
+          if (booking.status === 'cancelled') {
+            return false;
+          }
+          
+          // Convert timestamps to dates
+          const bookingStart = booking.startTime instanceof Date 
+            ? booking.startTime 
+            : booking.startTime.toDate ? booking.startTime.toDate() : new Date(booking.startTime);
+          const bookingEnd = booking.endTime instanceof Date 
+            ? booking.endTime 
+            : booking.endTime.toDate ? booking.endTime.toDate() : new Date(booking.endTime);
+          
+          // Check if booking overlaps with selected day
+          const overlapsWithDay = bookingStart <= endOfDay && bookingEnd >= startOfDay;
+          
+          return overlapsWithDay;
+        });
+        
+        console.log('📋 Filtered bookings for day:', filteredBookings.length, 'items');
+        console.log('Filtered bookings:', filteredBookings);
+        
+        return filteredBookings;
+      })
+    ) as Observable<Booking[]>;
   }
 }

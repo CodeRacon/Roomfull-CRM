@@ -23,6 +23,14 @@
   @include mat.system-level-typography(theme.$dark-theme);
 }
 
+.mat-horizontal-content-container {
+  overflow: visible !important;
+}
+
+.mat-horizontal-stepper-header-container {
+  overflow: visible !important;
+}
+
 // Basis-Styles
 html,
 body {
