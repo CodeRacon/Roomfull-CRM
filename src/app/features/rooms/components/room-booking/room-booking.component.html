@@ -1,10 +1,13 @@
 <div class="booking-container">
+  <!-- Zurück-Button -->
   <div class="back-button">
-    <a mat-button routerLink="/rooms">
+    <a mat-button
+      routerLink="/rooms">
       <mat-icon>arrow_back</mat-icon> Zurück zur Raumübersicht
     </a>
   </div>
 
+  <!-- Hauptinhalt mit Rauminformationen und Buchungsformular -->
   <ng-container *ngIf="room$ | async as room; else loadingTemplate">
     <div class="booking-header">
       <h1>Raum buchen: {{ room.name }}</h1>
@@ -15,6 +18,7 @@
     </div>
 
     <div class="booking-content">
+      <!-- Rauminformationskarte -->
       <mat-card class="room-info-card">
         <mat-card-content>
           <h2>Rauminformationen</h2>
@@ -23,9 +27,7 @@
           <div class="room-details">
             <div class="detail-item">
               <mat-icon>euro</mat-icon>
-              <span
-                >Preis pro Stunde: {{ formatPrice(room.pricePerHour) }}</span
-              >
+              <span>Preis pro Stunde: {{ formatPrice(room.pricePerHour) }}</span>
             </div>
 
             <div class="detail-item">
@@ -33,7 +35,8 @@
               <span>Mindestbuchungsdauer: {{ room.minDuration }} Minuten</span>
             </div>
 
-            <div *ngIf="room.discountPercentage" class="detail-item discount">
+            <div *ngIf="room.discountPercentage"
+              class="detail-item discount">
               <mat-icon>local_offer</mat-icon>
               <span>Rabatt: {{ room.discountPercentage }}%</span>
             </div>
@@ -41,124 +44,387 @@
         </mat-card-content>
       </mat-card>
 
+      <!-- Buchungsformular mit Stepper -->
       <mat-card class="booking-form-card">
         <mat-card-content>
           <h2>Buchungsdetails</h2>
 
-          <form [formGroup]="bookingForm" (ngSubmit)="onSubmit()">
-            <!-- choose Date -->
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Datum</mat-label>
-              <input
-                matInput
-                [matDatepicker]="picker"
-                formControlName="date"
-                [min]="minDate"
-              />
-              <mat-datepicker-toggle
-                matIconSuffix
-                [for]="picker"
-              ></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
-              <mat-error *ngIf="bookingForm.get('date')?.hasError('required')">
-                Bitte wähle ein Datum aus
-              </mat-error>
-            </mat-form-field>
+          <mat-stepper [linear]="true"
+            #stepper>
+            <!-- Schritt 1: Datum wählen -->
+            <mat-step [stepControl]="dateFormGroup">
+              <ng-template matStepLabel>Datum wählen</ng-template>
 
-            <!-- choose time-range -->
-            <div class="time-range">
-              <mat-form-field appearance="outline">
-                <mat-label>Startzeit</mat-label>
-                <mat-select formControlName="startTime">
-                  <mat-option *ngFor="let time of timeSlots" [value]="time">
-                    {{ time }}
-                  </mat-option>
-                </mat-select>
-                <mat-error
-                  *ngIf="bookingForm.get('startTime')?.hasError('required')"
-                >
-                  Bitte wähle eine Startzeit aus
-                </mat-error>
-              </mat-form-field>
+              <form [formGroup]="dateFormGroup">
+                <div class="step-content">
+                  <h3>An welchem Tag möchtest du buchen?</h3>
 
-              <mat-icon>arrow_forward</mat-icon>
+                  <mat-form-field appearance="outline"
+                    class="full-width">
+                    <mat-label>Datum</mat-label>
+                    <input matInput
+                      [matDatepicker]="picker"
+                      formControlName="date"
+                      [min]="minDate" />
+                    <mat-datepicker-toggle matIconSuffix
+                      [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                    <mat-error *ngIf="dateFormGroup.get('date')?.hasError('required')">
+                      Bitte wähle ein Datum aus
+                    </mat-error>
+                  </mat-form-field>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Endzeit</mat-label>
-                <mat-select formControlName="endTime">
-                  <mat-option *ngFor="let time of timeSlots" [value]="time">
-                    {{ time }}
-                  </mat-option>
-                </mat-select>
-                <mat-error
-                  *ngIf="bookingForm.get('endTime')?.hasError('required')"
-                >
-                  Bitte wähle eine Endzeit aus
-                </mat-error>
-              </mat-form-field>
-            </div>
+                  <div class="info-box"
+                    *ngIf="dateFormGroup.valid">
+                    <mat-icon>info</mat-icon>
+                    <span>Datum ausgewählt:
+                      {{
+                      dateFormGroup.get("date")?.value
+                      | date : "EEEE, dd. MMMM yyyy"
+                      }}</span>
+                  </div>
+                </div>
 
-            <div
-              *ngIf="bookingForm.hasError('invalidTimeRange')"
-              class="error-message"
-            >
-              Die Endzeit muss nach der Startzeit liegen
-            </div>
+                <div class="step-actions">
+                  <button mat-button
+                    matStepperNext
+                    color="primary"
+                    [disabled]="dateFormGroup.invalid"
+                    class="next-button">
+                    Weiter zur Zeitauswahl
+                    <mat-icon>arrow_forward</mat-icon>
+                  </button>
+                </div>
+              </form>
+            </mat-step>
+            <!-- Schritt 2: Zeitfenster wählen (REVOLUTIONÄRES BRACKET-SYSTEM) -->
+            <mat-step [stepControl]="timeFormGroup">
+              <ng-template matStepLabel>Zeitfenster wählen</ng-template>
 
-            <!-- Notes -->
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Notizen (optional)</mat-label>
-              <textarea matInput formControlName="notes" rows="3"></textarea>
-            </mat-form-field>
+              <form [formGroup]="timeFormGroup">
+                <div class="step-content">
+                  <h3>Wähle dein Zeitfenster</h3>
 
-            <!-- Price-calculation -->
-            <div class="price-calculation" *ngIf="calculatedPrice > 0">
-              <h3>Preisberechnung</h3>
-              <div class="price-box">
-                <span class="price-label">Gesamtpreis:</span>
-                <span class="price-value">{{
-                  formatPrice(calculatedPrice)
-                }}</span>
-              </div>
-            </div>
+                  <!-- Range-Slider für Buchungsdauer -->
+                  <div class="duration-slider-section"
+                    *ngIf="dateFormGroup.valid">
+                    <ng-container *ngIf="room$ | async as room">
+                      <h4>Buchungsdauer wählen:</h4>
 
-            <!-- Error-Message -->
-            <div *ngIf="error" class="error-message">
-              {{ error }}
-            </div>
+                      <div class="slider-container">
+                        <div class="slider-labels">
+                          <span class="min-label">{{ getDurationLabel(sliderConfig.min) }}</span>
+                          <span class="current-value">{{ getDurationLabel(selectedDuration) }}</span>
+                          <span class="max-label">{{ getDurationLabel(sliderConfig.max) }}</span>
+                        </div>
 
-            <!-- Booking-Button -->
-            <div class="form-actions">
-              <button
-                mat-raised-button
-                color="primary"
-                type="submit"
-                [disabled]="bookingForm.invalid || loading"
-                class="book-button"
-              >
-                <mat-icon>event_available</mat-icon>
-                {{ loading ? "Buchung wird erstellt..." : "Jetzt buchen" }}
-              </button>
-            </div>
-          </form>
+                        <mat-slider class="duration-slider"
+                          [min]="sliderConfig.min"
+                          [max]="sliderConfig.max"
+                          [step]="sliderConfig.step"
+                          discrete>
+                          <input matSliderThumb
+                            [value]="selectedDuration"
+                            (input)="onSliderChange($event)">
+                        </mat-slider>
+                      </div>
+
+                      <!-- Preisberechnung mit Discount-Anzeige -->
+                      <div class="pricing-info-box"
+                        *ngIf="pricingInfo.currentPrice > 0">
+                        <div class="current-selection">
+                          <mat-icon>schedule</mat-icon>
+                          <span><strong>{{ getDurationLabel(selectedDuration) }}</strong> (+ {{ getCleaningTime(room.type) }} Min Reinigung)</span>
+                        </div>
+
+                        <div class="price-details">
+                          <div class="current-price">
+                            <mat-icon>euro</mat-icon>
+                            <span><strong>{{ formatPrice(pricingInfo.currentPrice) }}</strong> ({{ formatPrice(room.pricePerHour) }}/h)</span>
+                          </div>
+
+                          <div class="fullday-offer"
+                            *ngIf="pricingInfo.showFullDayOffer">
+                            <mat-icon>local_offer</mat-icon>
+                            <span>Ganztag (8h): <strong>{{ formatPrice(pricingInfo.fullDayPrice) }}</strong> - Ersparnis: <strong>{{ formatPrice(pricingInfo.savings) }}</strong> ({{ pricingInfo.discountPercentage }}%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </ng-container>
+                  </div>
+
+                  <!-- === BRACKET-TIMELINE-SYSTEM === -->
+                  <div class="bracket-timeline-section"
+                    *ngIf="selectedDuration">
+                    <h4>Zeitfenster positionieren:</h4>
+                    <p class="timeline-instruction">Verschiebe das Bracket zu deiner gewünschten Uhrzeit</p>
+
+                    <!-- Timeline Scroll Wrapper -->
+                    <div class="timeline-scroll-wrapper">
+                      <!-- Timeline Container -->
+                      <div class="timeline-container"
+                        #timelineContainer>
+
+                      <!-- Enhanced Grid System -->
+                      <div class="timeline-grid">
+                        <!-- Full Hours (thick lines) -->
+                        <div class="grid-mark hour-mark"
+                          *ngFor="let hour of [8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]"
+                          [style.left.px]="(hour - 8) * 60 * timelineConfig.pixelsPerMinute">
+                          <span class="time-label">{{ hour }}</span>
+                        </div>
+
+                        <!-- Half Hours (medium lines) -->
+                        <div class="grid-mark half-hour-mark"
+                          *ngFor="let half of getHalfHourMarks()"
+                          [style.left.px]="half.position">
+                        </div>
+
+                        <!-- Quarter Hours (thin lines) -->
+                        <div class="grid-mark quarter-hour-mark"
+                          *ngFor="let quarter of getQuarterHourMarks()"
+                          [style.left.px]="quarter.position">
+                        </div>
+                      </div>
+
+                      <!-- Existing Bookings (Visual Blocks) -->
+                      <div class="existing-bookings">
+                        <div class="booking-block"
+                          *ngFor="let booking of bookings"
+                          [style.left.px]="getBookingPosition(booking).left"
+                          [style.width.px]="getBookingPosition(booking).width">
+                          <span class="booking-label">Belegt</span>
+                        </div>
+                      </div>
+
+                      <!-- Draggable Bracket (Manual Drag Implementation) -->
+                      <div class="bracket-container"
+                        (mousedown)="onBracketMouseDown($event)"
+                        [ngStyle]="getBracketStyles()"
+                        [class.dragging]="isDragging"
+                        [class.locked]="timelineBracket.isLocked"
+                        [class.available]="timelineBracket.availability.status === 'available'"
+                        [class.conflict]="timelineBracket.availability.status === 'conflict'"
+                        [class.blocked]="timelineBracket.availability.status === 'blocked'"
+                        title="Klicken und ziehen um Zeit zu ändern"
+                        style="cursor: grab"
+                        [style.cursor]="isDragging ? 'grabbing' : 'grab'">
+
+                        <!-- Simplified Bracket Content -->
+                        <div class="bracket-content">
+                          <div class="bracket-time-display">
+                            {{ getBracketTimeDisplay() }}
+                          </div>
+                          <div class="bracket-duration-display">
+                            {{ getDurationLabel(timelineBracket.duration) }}
+                          </div>
+                        </div>
+
+                        <!-- Conflict Indicators -->
+                        <div class="conflict-indicators"
+                          *ngIf="timelineBracket.availability.conflictRanges.length > 0">
+                          <div class="conflict-bar"
+                            *ngFor="let conflict of timelineBracket.availability.conflictRanges"
+                            [style.left.px]="(conflict.startMinutes - timelineBracket.startTimeMinutes) * timelineConfig.pixelsPerMinute"
+                            [style.width.px]="(conflict.endMinutes - conflict.startMinutes) * timelineConfig.pixelsPerMinute">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    </div>
+
+                    <!-- Bracket Status Display -->
+                    <div class="bracket-status-display">
+                      <div class="status-indicator"
+                        [class.available]="timelineBracket.availability.status === 'available'"
+                        [class.conflict]="timelineBracket.availability.status === 'conflict'"
+                        [class.blocked]="timelineBracket.availability.status === 'blocked'">
+
+                        <mat-icon>
+                          {{ timelineBracket.availability.status === 'available' ? 'check_circle' :
+                             timelineBracket.availability.status === 'conflict' ? 'warning' : 'cancel' }}
+                        </mat-icon>
+
+                        <div class="status-text">
+                          <span class="status-label">
+                            {{ timelineBracket.availability.status === 'available' ? 'VERFÜGBAR' :
+                               timelineBracket.availability.status === 'conflict' ? 'KONFLIKT' : 'BELEGT' }}
+                          </span>
+                          <span class="availability-score"
+                            *ngIf="timelineBracket.availability.status === 'conflict'">
+                            {{ timelineBracket.availability.availabilityScore }}% verfügbar
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Lock Button -->
+                      <button mat-raised-button
+                        color="primary"
+                        [disabled]="!timelineBracket.availability.canConfirm || timelineBracket.isLocked"
+                        (click)="lockBracketPosition()"
+                        class="lock-button">
+                        <mat-icon>{{ timelineBracket.isLocked ? 'lock' : 'lock_open' }}</mat-icon>
+                        {{ timelineBracket.isLocked ? 'Position bestätigt' : 'Position bestätigen' }}
+                      </button>
+                    </div>
+
+                    <!-- Reservierungs-Timer -->
+                    <div class="reservation-timer"
+                      *ngIf="hasActiveReservation">
+                      <mat-icon>timer</mat-icon>
+                      <span>Ihr Zeitfenster läuft in {{ getFormattedReservationTime() }} ab</span>
+                      <button mat-stroked-button
+                        color="primary"
+                        (click)="extendReservation()"
+                        class="extend-button">
+                        <mat-icon>refresh</mat-icon>
+                        Verlängern
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Loading State -->
+                  <div class="loading-slots"
+                    *ngIf="loading">
+                    <mat-spinner diameter="40"></mat-spinner>
+                    <p>Timeline wird geladen...</p>
+                  </div>
+
+                  <!-- Versteckte Felder für Form-Validierung -->
+                  <input type="hidden"
+                    formControlName="startTime" />
+                  <input type="hidden"
+                    formControlName="endTime" />
+
+                  <!-- Fehlermeldung -->
+                  <div class="error-message"
+                    *ngIf="timeFormGroup.touched && timeFormGroup.invalid">
+                    <mat-icon>error_outline</mat-icon>
+                    <span *ngIf="timeFormGroup.hasError('invalidTimeRange')">
+                      Die Endzeit muss nach der Startzeit liegen.
+                    </span>
+                    <span *ngIf="
+                        timeFormGroup.get('startTime')?.hasError('required') ||
+                        timeFormGroup.get('endTime')?.hasError('required')
+                      ">
+                      Bitte wähle ein Zeitfenster aus.
+                    </span>
+                  </div>
+                </div>
+
+                <div class="step-actions">
+                  <button mat-button
+                    matStepperPrevious>
+                    <mat-icon>arrow_back</mat-icon>
+                    Zurück
+                  </button>
+                  <button mat-button
+                    matStepperNext
+                    color="primary"
+                    [disabled]="timeFormGroup.invalid || !timelineBracket.isLocked"
+                    class="next-button">
+                    Weiter zur Bestätigung
+                    <mat-icon>arrow_forward</mat-icon>
+                  </button>
+                </div>
+              </form>
+            </mat-step>
+
+            <!-- Schritt 3: Bestätigung und Buchung -->
+            <mat-step [stepControl]="detailsFormGroup">
+              <ng-template matStepLabel>Buchung bestätigen</ng-template>
+
+              <form [formGroup]="detailsFormGroup">
+                <div class="step-content">
+                  <h3>Buchungsübersicht</h3>
+
+                  <div class="booking-summary">
+                    <div class="summary-item">
+                      <span class="summary-label">Raum:</span>
+                      <span class="summary-value">{{ room.name }}</span>
+                    </div>
+
+                    <div class="summary-item">
+                      <span class="summary-label">Datum:</span>
+                      <span class="summary-value">{{
+                        dateFormGroup.get("date")?.value
+                        | date : "EEEE, dd. MMMM yyyy"
+                        }}</span>
+                    </div>
+
+                    <div class="summary-item">
+                      <span class="summary-label">Uhrzeit:</span>
+                      <span class="summary-value">{{ timeFormGroup.get("startTime")?.value }} -
+                        {{ timeFormGroup.get("endTime")?.value }} Uhr</span>
+                    </div>
+
+                    <div class="summary-item price">
+                      <span class="summary-label">Gesamtpreis:</span>
+                      <span class="summary-value">{{
+                        formatPrice(currentPrice)
+                        }}</span>
+                    </div>
+                  </div>
+
+                  <mat-form-field appearance="outline"
+                    class="full-width">
+                    <mat-label>Notizen (optional)</mat-label>
+                    <textarea matInput
+                      formControlName="notes"
+                      rows="3"
+                      placeholder="Besondere Wünsche oder Anmerkungen?"></textarea>
+                  </mat-form-field>
+
+                  <!-- Fehlermeldung -->
+                  <div *ngIf="error"
+                    class="error-message">
+                    <mat-icon>error_outline</mat-icon>
+                    <span>{{ error }}</span>
+                  </div>
+                </div>
+
+                <div class="step-actions">
+                  <button mat-button
+                    matStepperPrevious>
+                    <mat-icon>arrow_back</mat-icon>
+                    Zurück
+                  </button>
+                  <button mat-raised-button
+                    color="primary"
+                    [disabled]="
+                      loading || dateFormGroup.invalid || timeFormGroup.invalid
+                    "
+                    (click)="onSubmit()"
+                    class="book-button">
+                    <mat-icon>event_available</mat-icon>
+                    {{ loading ? "Buchung wird erstellt..." : "Jetzt buchen" }}
+                  </button>
+                </div>
+              </form>
+            </mat-step>
+          </mat-stepper>
         </mat-card-content>
       </mat-card>
     </div>
   </ng-container>
 
-  <!-- Loading-Status -->
+  <!-- Loading-Template -->
   <ng-template #loadingTemplate>
-    <div *ngIf="!error" class="loading-container">
+    <div *ngIf="!error"
+      class="loading-container">
       <mat-spinner diameter="40"></mat-spinner>
       <p>Rauminformationen werden geladen...</p>
     </div>
 
-    <!-- Error-Status -->
-    <div *ngIf="error" class="error-container">
+    <!-- Fehler-Template -->
+    <div *ngIf="error"
+      class="error-container">
       <mat-icon>error_outline</mat-icon>
       <h2>Fehler</h2>
       <p>{{ error }}</p>
-      <button mat-raised-button color="primary" routerLink="/rooms">
+      <button mat-raised-button
+        color="primary"
+        routerLink="/rooms">
         Zurück zur Raumübersicht
       </button>
     </div>

@@ -5,6 +5,7 @@ export interface Room {
   capacity: number;
   description: string;
   minDuration: number; // in minutes
+  steps: number; // step size for duration slider in minutes
   pricePerHour: number;
   pricePerDay?: number;
   pricePerWeek?: number;
