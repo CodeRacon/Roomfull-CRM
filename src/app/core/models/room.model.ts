@@ -6,6 +6,7 @@ export interface Room {
   description: string;
   minDuration: number; // in minutes
   steps: number; // step size for duration slider in minutes
+  bracketSteps: number; // step size for bracket snapping in timeline in minutes
   pricePerHour: number;
   pricePerDay?: number;
   pricePerWeek?: number;

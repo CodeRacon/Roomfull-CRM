@@ -22,6 +22,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { STEPPER_GLOBAL_OPTIONS } from '@angular/cdk/stepper';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 
@@ -30,6 +31,7 @@ import { BookingService } from '../../../../core/services/booking.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Room } from '../../../../core/models/room.model';
 import { Booking } from '../../../../core/models/booking.model';
+import { BookingTimeSlot, TimeRange, BookingAvailability, BufferTimeConfig } from '../../../../core/models/booking-time-slot.model';
 import {
   Observable,
   catchError,
@@ -93,12 +95,17 @@ interface TimelineBracket {
   availability: BracketAvailability;
   isLocked: boolean; // User confirmed this position
   dragConstraints: DragConstraints;
+  // NEW: Cleaning time visualization
+  cleaningTimeMinutes: number; // Cleaning time in minutes
+  totalWidthPixels: number; // Total width including cleaning appendix
+  cleaningWidthPixels: number; // Width of cleaning appendix only
+  mainWidthPixels: number; // Width of main bracket only
 }
 
 interface BracketPosition {
   left: number; // CSS left position in pixels
   width: number; // CSS width in pixels
-  snapPosition: number; // Snapped position based on room.steps
+  snapPosition: number; // Snapped position based on room.bracketSteps
 }
 
 interface BracketAvailability {
@@ -106,17 +113,16 @@ interface BracketAvailability {
   conflictRanges: TimeRange[]; // Overlapping existing bookings
   availabilityScore: number; // 0-100% available
   canConfirm: boolean; // Can this position be locked?
+  // New fields for buffer handling
+  bufferConflicts?: TimeRange[];
 }
 
-interface TimeRange {
-  startMinutes: number;
-  endMinutes: number;
-}
+// TimeRange interface moved to booking-time-slot.model.ts
 
 interface DragConstraints {
   minLeft: number; // Earliest time (08:00 = 0px)
   maxLeft: number; // Latest time that fits duration before 22:00
-  snapGrid: number; // Grid size based on room.steps
+  snapGrid: number; // Grid size based on room.bracketSteps
 }
 
 // Timeline configuration
@@ -126,7 +132,7 @@ interface TimelineConfig {
   totalMinutes: number; // 840 minutes (14 hours)
   pixelsPerMinute: number; // Scale factor for positioning
   hourMarkInterval: number; // Hour grid lines
-  stepInterval: number; // Based on room.steps
+  stepInterval: number; // Based on room.bracketSteps
 }
 
 @Component({
@@ -151,6 +157,7 @@ interface TimelineConfig {
     MatSliderModule,
     MatChipsModule,
     MatProgressBarModule,
+    MatTooltipModule,
     DragDropModule,
   ],
   providers: [
@@ -217,7 +224,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     totalMinutes: 840, // 14 hours * 60 minutes
     pixelsPerMinute: 1.5, // Scale factor (will be calculated dynamically)
     hourMarkInterval: 60,
-    stepInterval: 30 // Default, will be set from room.steps
+    stepInterval: 15 // Default, will be set from room.bracketSteps
   };
 
   timelineBracket: TimelineBracket = {
@@ -233,7 +240,12 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       canConfirm: false
     },
     isLocked: false,
-    dragConstraints: { minLeft: 0, maxLeft: 0, snapGrid: 30 }
+    dragConstraints: { minLeft: 0, maxLeft: 0, snapGrid: 30 },
+    // NEW: Cleaning time visualization
+    cleaningTimeMinutes: 0, // Will be calculated based on room type
+    totalWidthPixels: 0, // Will be calculated
+    cleaningWidthPixels: 0, // Will be calculated
+    mainWidthPixels: 0 // Will be calculated
   };
 
   // Timeline drag state
@@ -325,7 +337,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
         'meeting': 30,
         'office': 60,
         'booth': 15,
-        'open_world': 10
+        'open_world': 15
       };
       step = fallbackSteps[room.type] || 30;
     }
@@ -340,9 +352,9 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   getCleaningTime(roomType: Room['type']): number {
     const cleaningTimes = {
       'meeting': 15,      // +15 Min
-      'office': 15,       // +15 Min
-      'booth': 10,        // +10 Min
-      'open_world': 5     // +5 Min
+      'office': 30,       // +30 Min
+      'booth': 15,        // +15 Min
+      'open_world': 0      
     };
     return cleaningTimes[roomType];
   }
@@ -355,6 +367,44 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   // calculate actual blocking time
   calculateTotalBlockTime(duration: number, roomType: Room['type']): number {
     return duration + this.getBufferTime(roomType);
+  }
+
+  getBufferTimeConfig(roomType: Room['type']): BufferTimeConfig {
+    const roomTypeBuffers = {
+      'meeting': { before: 0, after: 15 },
+      'office': { before: 0, after: 30 },
+      'booth': { before: 0, after: 15 },
+      'open_world': { before: 0, after: 0 }
+    };
+
+    return {
+      strategy: 'asymmetric',
+      bufferBeforeMinutes: roomTypeBuffers[roomType].before,
+      bufferAfterMinutes: roomTypeBuffers[roomType].after
+    };
+  }
+
+  createBookingTimeSlot(
+    userStartTime: Date,
+    userEndTime: Date,
+    roomType: Room['type'],
+    bookingId?: string
+  ): BookingTimeSlot {
+    const config = this.getBufferTimeConfig(roomType);
+
+    const blockStartTime = new Date(userStartTime.getTime() - (config.bufferBeforeMinutes! * 60000));
+    const blockEndTime = new Date(userEndTime.getTime() + (config.bufferAfterMinutes! * 60000));
+
+    return {
+      userStartTime,
+      userEndTime,
+      blockStartTime,
+      blockEndTime,
+      bufferBefore: config.bufferBeforeMinutes!,
+      bufferAfter: config.bufferAfterMinutes!,
+      roomType,
+      bookingId
+    };
   }
 
   // Load room and configure slider
@@ -419,6 +469,10 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
           // Room steps fallback is now handled in RoomService - clean architecture!
           this.bookings = bookings;
           this.generateAvailableSlots(this.selectedDate!, room, bookings);
+
+          // Trigger initial collision check for bracket
+          this.checkBracketAvailability();
+
           this.loading = false;
           this.cdr.detectChanges();
         },
@@ -599,8 +653,8 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
 
   // Initialize timeline configuration based on room settings
   initializeTimeline(room: Room): void {
-    // IMPORTANT: Ensure stepInterval matches slider exactly
-    this.timelineConfig.stepInterval = room.steps || 30;
+    // IMPORTANT: Use bracketSteps for timeline snapping (separate from slider steps)
+    this.timelineConfig.stepInterval = room.bracketSteps || 15;
     this.timelineConfig.pixelsPerMinute = this.calculatePixelsPerMinute();
 
     // Set initial bracket position - FIXED: Start at a sensible position
@@ -661,19 +715,39 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     this.room$.pipe(take(1)).subscribe((room) => {
       if (!room) return;
 
-      const cleaningTime = this.getCleaningTime(room.type);
-      const totalEndTime = endTime + cleaningTime;
+      // Use new buffer-aware conflict detection
+      const conflictResult = this.findConflictingBookingsWithBuffer(startTime, endTime, room.type);
 
-      // Check against existing bookings
-      const conflicts = this.findConflictingBookings(startTime, totalEndTime);
+      // Determine availability status - SIMPLIFIED: No exceptions for adjacent bookings
+      const hasUserConflicts = conflictResult.userConflicts.length > 0;
+      const hasBufferConflicts = conflictResult.bufferConflicts.length > 0;
+
+      let status: 'available' | 'conflict' | 'blocked' = 'available';
+      let canConfirm = true;
+
+      if (hasUserConflicts) {
+        status = 'blocked';
+        canConfirm = false;
+      } else if (hasBufferConflicts) {
+        status = 'conflict';
+        canConfirm = false;
+      }
+
+      // Calculate availability score based on all conflicts
+      const allConflicts = [...conflictResult.userConflicts, ...conflictResult.bufferConflicts];
+      const availabilityScore = this.calculateAvailabilityScore(startTime, endTime, allConflicts);
 
       this.timelineBracket.availability = {
-        status: conflicts.length === 0 ? 'available' :
-                this.calculateAvailabilityScore(startTime, totalEndTime, conflicts) > 0 ? 'conflict' : 'blocked',
-        conflictRanges: conflicts,
-        availabilityScore: this.calculateAvailabilityScore(startTime, totalEndTime, conflicts),
-        canConfirm: conflicts.length === 0
+        status,
+        conflictRanges: allConflicts,
+        availabilityScore,
+        canConfirm,
+        // New fields for buffer handling
+        bufferConflicts: conflictResult.bufferConflicts
       };
+
+      // Update bracket dimensions for two-part display (main + cleaning)
+      this.updateBracketDimensions(room);
 
       this.cdr.detectChanges();
     });
@@ -691,16 +765,87 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       const bookingStartMinutes = bookingStart - (8 * 60);
       const bookingEndMinutes = bookingEnd - (8 * 60);
 
-      // Check for overlap
-      if (!(endMinutes <= bookingStartMinutes || startMinutes >= bookingEndMinutes)) {
+      // Check for overlap (use <= and >= to allow adjacent bookings)
+      const hasConflict = !(endMinutes <= bookingStartMinutes || startMinutes >= bookingEndMinutes);
+
+      if (hasConflict) {
         conflicts.push({
           startMinutes: Math.max(startMinutes, bookingStartMinutes),
-          endMinutes: Math.min(endMinutes, bookingEndMinutes)
+          endMinutes: Math.min(endMinutes, bookingEndMinutes),
+          type: 'user' // Current conflict is always user time
         });
       }
     });
 
     return conflicts;
+  }
+
+  // SIMPLIFIED: Find conflicting bookings with REAL cleaning time (no adjacent booking exceptions)
+  findConflictingBookingsWithBuffer(
+    userStartMinutes: number,
+    userEndMinutes: number,
+    roomType: Room['type']
+  ): { userConflicts: TimeRange[], bufferConflicts: TimeRange[] } {
+    const userConflicts: TimeRange[] = [];
+    const bufferConflicts: TimeRange[] = [];
+
+    const config = this.getBufferTimeConfig(roomType);
+    const bufferAfter = config.bufferAfterMinutes!;
+
+    // Calculate REAL block time range (user time + cleaning time)
+    const blockEndMinutes = userEndMinutes + bufferAfter;
+
+    this.bookings.forEach(booking => {
+      // Use block times if available (new bookings), otherwise calculate from user times (backward compatibility)
+      let bookingStart, bookingEnd;
+
+      if (booking.blockStartTime && booking.blockEndTime) {
+        // New booking with explicit block times
+        bookingStart = this.getMinutesFromMidnight(booking.blockStartTime);
+        bookingEnd = this.getMinutesFromMidnight(booking.blockEndTime);
+      } else {
+        // Legacy booking - calculate block time from user time + room type buffer
+        const userStart = this.getMinutesFromMidnight(booking.startTime);
+        const userEnd = this.getMinutesFromMidnight(booking.endTime);
+        const legacyConfig = this.getBufferTimeConfig(roomType);
+
+        bookingStart = userStart;
+        bookingEnd = userEnd + legacyConfig.bufferAfterMinutes!;
+      }
+
+      const bookingStartMinutes = bookingStart - (8 * 60);
+      const bookingEndMinutes = bookingEnd - (8 * 60);
+
+      // For user conflict checking, always use the original user times
+      const userBookingStart = this.getMinutesFromMidnight(booking.startTime) - (8 * 60);
+      const userBookingEnd = this.getMinutesFromMidnight(booking.endTime) - (8 * 60);
+
+      // Check user time vs user time conflicts
+      const userConflict = !(userEndMinutes <= userBookingStart || userStartMinutes >= userBookingEnd);
+      if (userConflict) {
+        userConflicts.push({
+          startMinutes: Math.max(userStartMinutes, userBookingStart),
+          endMinutes: Math.min(userEndMinutes, userBookingEnd),
+          type: 'user'
+        });
+      }
+
+      // Check REAL block time conflicts (user time + cleaning time vs existing bookings)
+      const blockConflict = !(blockEndMinutes <= bookingStartMinutes || userStartMinutes >= bookingEndMinutes);
+      if (blockConflict && !userConflict) {
+        // This is a cleaning time conflict - NO EXCEPTIONS for adjacent bookings
+        const conflictStart = Math.max(userStartMinutes, bookingStartMinutes);
+        const conflictEnd = Math.min(blockEndMinutes, bookingEndMinutes);
+
+        bufferConflicts.push({
+          startMinutes: conflictStart,
+          endMinutes: conflictEnd,
+          type: 'buffer'
+        });
+      }
+    });
+
+    return { userConflicts, bufferConflicts };
   }
 
   // Calculate availability score (0-100%)
@@ -715,9 +860,47 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   }
 
   // Convert Date to minutes from midnight
-  getMinutesFromMidnight(date: Date | string): number {
-    const d = date instanceof Date ? date : new Date(date);
+  getMinutesFromMidnight(date: Date | string | any): number {
+    // Handle Firebase Timestamp objects properly
+    let d: Date;
+    if (date instanceof Date) {
+      d = date;
+    } else if (date && typeof date.toDate === 'function') {
+      // Firebase Timestamp
+      d = date.toDate();
+    } else {
+      // String or other format
+      d = new Date(date);
+    }
+
     return d.getHours() * 60 + d.getMinutes();
+  }
+
+  // NEW: Calculate cleaning time pixel width
+  calculateCleaningWidthPixels(): number {
+    if (!this.timelineBracket.cleaningTimeMinutes) {
+      return 0;
+    }
+    return this.timelineBracket.cleaningTimeMinutes * this.timelineConfig.pixelsPerMinute;
+  }
+
+  // NEW: Update bracket dimensions for two-part display
+  updateBracketDimensions(room: Room): void {
+    if (!room || !this.timelineBracket) {
+      return;
+    }
+
+    const cleaningTime = this.getCleaningTime(room.type);
+
+    // Main bracket width (user booking time)
+    this.timelineBracket.mainWidthPixels = this.timelineBracket.duration * this.timelineConfig.pixelsPerMinute;
+
+    // Cleaning appendix width
+    this.timelineBracket.cleaningTimeMinutes = cleaningTime;
+    this.timelineBracket.cleaningWidthPixels = this.calculateCleaningWidthPixels();
+
+    // Total width
+    this.timelineBracket.totalWidthPixels = this.timelineBracket.mainWidthPixels + this.timelineBracket.cleaningWidthPixels;
   }
 
   // Manual drag implementation (CDK Drag wasn't working properly)
@@ -832,35 +1015,34 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return display;
   }
 
-  // Get bracket CSS styles
+  // Get bracket CSS styles - Position only (colors via CSS classes)
   getBracketStyles(): { [key: string]: string } {
     const position = this.timelineBracket.position;
-    const availability = this.timelineBracket.availability;
-
-    let backgroundColor = '#4CAF50'; // Green = available
-    let borderColor = '#4CAF50';
-
-    if (availability.status === 'conflict') {
-      backgroundColor = '#FF9800'; // Orange = conflict
-      borderColor = '#FF9800';
-    } else if (availability.status === 'blocked') {
-      backgroundColor = '#f44336'; // Red = blocked
-      borderColor = '#f44336';
-    }
 
     return {
       'left': `${position.left}px`,
-      'width': `${position.width - 2}px`,
-      'background-color': backgroundColor,
-      'border-color': borderColor,
+      // Width is now handled by individual parts (main + cleaning)
       'opacity': this.timelineBracket.isLocked ? '0.9' : '0.7'
     };
   }
 
   // Get booking visual position for existing bookings
   getBookingPosition(booking: Booking): { left: number; width: number } {
-    const startMinutes = this.getMinutesFromMidnight(booking.startTime) - (8 * 60); // Subtract 08:00 offset
-    const endMinutes = this.getMinutesFromMidnight(booking.endTime) - (8 * 60);
+    // Use block times if available (includes cleaning time), otherwise fall back to user times
+    let startTime, endTime;
+
+    if (booking.blockStartTime && booking.blockEndTime) {
+      // New booking with explicit block times (includes cleaning time)
+      startTime = booking.blockStartTime;
+      endTime = booking.blockEndTime;
+    } else {
+      // Legacy booking - use user times for backward compatibility
+      startTime = booking.startTime;
+      endTime = booking.endTime;
+    }
+
+    const startMinutes = this.getMinutesFromMidnight(startTime) - (8 * 60); // Subtract 08:00 offset
+    const endMinutes = this.getMinutesFromMidnight(endTime) - (8 * 60);
 
     return {
       left: Math.max(0, startMinutes * this.timelineConfig.pixelsPerMinute),
@@ -936,7 +1118,6 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     };
   }
 
-  // Verlängere Reservierung um weitere 10 Minuten
   // refresh reservation timer
   extendReservation(): void {
     if (this.selectedSlot) {
@@ -1169,6 +1350,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
                 startTime: startDateTime,
                 endTime: endDateTime,
                 notes: notes || '',
+                roomType: room.type, // NEW: Pass room type for buffer time calculation
               });
             })
           );
