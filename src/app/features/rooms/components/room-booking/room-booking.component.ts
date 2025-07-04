@@ -165,10 +165,10 @@ interface TimelineConfig {
 })
 export class RoomBookingComponent implements OnInit, AfterViewInit {
   @ViewChild('timelineContainer', { static: false }) timelineContainerRef!: ElementRef<HTMLElement>;
-  // Observable für Raumdaten
+  // observable for room data
   room$!: Observable<Room | null>;
 
-  // FormGroups für die einzelnen Schritte
+  // formgroups for each step
   dateFormGroup!: FormGroup;
   timeFormGroup!: FormGroup;
   detailsFormGroup!: FormGroup;
@@ -178,28 +178,28 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   error: string | null = null;
   success = false;
 
-  // Zeitauswahl
-  minDate = new Date(); // Minimum Datum (heute)
-  availableTimeSlots: AvailableSlot[] = []; // Verfügbare Zeitslots (überarbeitet)
+  // timeselection
+  minDate = new Date(); // Minimum Date (today)
+  availableTimeSlots: AvailableSlot[] = []; // available time slots
 
-  // Slider-System (ersetzt Dauer-Optionen)
+  // Slider-System
   sliderConfig: SliderConfig = { min: 30, max: 480, step: 30, value: 120 };
-  selectedDuration: number = 120; // Standard: 2 Stunden
+  selectedDuration: number = 120; // Standard: 2 hours
   selectedSlot: AvailableSlot | null = null;
 
-  // Zeitauswahl-Status
+  // timeselection-status
   selectedDate: Date | null = null;
 
-  // Slot-Reservierung mit Timer (überarbeitet)
+  // Slot-Reservation with Timer
   reservationTimer: ReservationTimer = {
     selectedSlot: null,
     expiresAt: null,
     remainingSeconds: 0
   };
   private timerInterval: any = null;
-  private readonly RESERVATION_DURATION = 10 * 60; // 10 Minuten in Sekunden
+  private readonly RESERVATION_DURATION = 10 * 60; // 10 Minutes in Seconds
 
-  // Preisberechnung (erweitert)
+  // price calculation
   pricingInfo: PricingInfo = {
     currentPrice: 0,
     fullDayPrice: 0,
@@ -208,7 +208,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     showFullDayOffer: false
   };
 
-  bookings: Booking[] = []; // Bestehende Buchungen für den ausgewählten Tag
+  bookings: Booking[] = []; // existing booking for the chosen date
 
   // === BRACKET-TIMELINE-SYSTEM ===
   timelineConfig: TimelineConfig = {
@@ -270,7 +270,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    // Raum laden
+    // load room
     this.room$ = this.route.paramMap.pipe(
       map((params) => params.get('id')),
       switchMap((id) => {
@@ -287,7 +287,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       })
     );
 
-    // Wenn sich das Datum ändert, lade Raum und konfiguriere Slider
+    // if date changes, load room and configure slider
     this.dateFormGroup.get('date')!.valueChanges.subscribe((date) => {
       if (date) {
         this.selectedDate = date;
@@ -296,7 +296,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       }
     });
 
-    // Preisberechnung wird durch Slot-Auswahl ausgelöst
+    // price calculation is triggered by time selection
   }
 
   ngAfterViewInit(): void {
@@ -313,12 +313,12 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // Slider-Konfiguration basierend auf Raum generieren
+  // generates slider configuration based on room
   getSliderConfig(room: Room): SliderConfig {
     const min = room.minDuration;
-    const max = 480; // 8 Stunden Maximum
+    const max = 480; // 8 hours Maximum
 
-    // Fallback für steps falls nicht vorhanden
+    // Fallback for steps, if not existing
     let step = room.steps;
     if (!step || step === undefined) {
       const fallbackSteps = {
@@ -330,13 +330,13 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       step = fallbackSteps[room.type] || 30;
     }
 
-    // Standard-Wert: Mindestdauer oder erstes Vielfaches der Schrittgröße
+    // standard-value: minimum duration or first multiple of the step size
     const value = Math.max(room.minDuration, step);
 
     return { min, max, step, value };
   }
 
-  // Reinigungszeiten pro Raumtyp
+  // cleaning-time per room type
   getCleaningTime(roomType: Room['type']): number {
     const cleaningTimes = {
       'meeting': 15,      // +15 Min
@@ -347,17 +347,17 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return cleaningTimes[roomType];
   }
 
-  // Alias für Abwärtskompatibilität
+  // alais for backwards compatibility
   getBufferTime(roomType: Room['type']): number {
     return this.getCleaningTime(roomType);
   }
 
-  // Berechne tatsächliche Blockierungszeit
+  // calculate actual blocking time
   calculateTotalBlockTime(duration: number, roomType: Room['type']): number {
     return duration + this.getBufferTime(roomType);
   }
 
-  // Lade Raum und konfiguriere Slider
+  // Load room and configure slider
   private loadRoomAndConfigureSlider(): void {
     this.room$.pipe(take(1)).subscribe((room) => {
       if (room) {
@@ -367,7 +367,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
         // Initialize timeline with room settings (fallback logic now in RoomService)
         this.initializeTimeline(room);
 
-        // Verwende setTimeout um Change Detection Zyklus zu vermeiden
+        // use setTimeout to avoid Change Detection Cycle
         setTimeout(() => {
           this.onDurationChange();
         });
@@ -375,13 +375,13 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // Dauer-Änderung behandeln
+  // handle duration change
   onDurationChange(value?: number): void {
     if (value !== undefined) {
       this.selectedDuration = value;
     }
 
-    // Zusätzliche Validierung
+    // additional validation logic
     if (!this.selectedDate) {
       this.availableTimeSlots = [];
       this.cdr.detectChanges();
@@ -399,7 +399,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     this.selectedSlot = null;
     this.cdr.detectChanges();
 
-    // Hole den Raum und die Buchungen für diesen Tag
+    // get room and bookings for this day
     const roomId = this.route.snapshot.paramMap.get('id')!;
 
     combineLatest([
@@ -430,7 +430,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       });
   }
 
-  // Generiere verfügbare Slots basierend auf gewählter Dauer (überarbeitet)
+  // gnereate available slots based on selected duration
   private generateAvailableSlots(date: Date, room: Room, bookings: Booking[]): void {
     this.availableTimeSlots = [];
 
@@ -442,7 +442,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     const cleaningTime = this.getCleaningTime(room.type);
     const totalBlockTime = duration + cleaningTime;
 
-    // Für jede halbe Stunde zwischen 8:00 und 21:30 (so dass auch spätere Buchungen möglich sind)
+    // for every half hour between 8:00 and 21:30 (so that even late bookings are possible)
     for (let hour = 8; hour < 22; hour++) {
       for (let minute of [0, 30]) {
         const startDateTime = new Date(date);
@@ -454,7 +454,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
         const blockEndDateTime = new Date(startDateTime);
         blockEndDateTime.setMinutes(blockEndDateTime.getMinutes() + totalBlockTime);
 
-        // Prüfe, ob dieser Zeitslot verfügbar ist (keine Überschneidung mit Buchungen)
+        // check if this time slot is available (no overlap with bookings)
         const isAvailable = !bookings.some((booking) => {
           const bookingStart = booking.startTime instanceof Date
             ? booking.startTime
@@ -463,12 +463,12 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
             ? booking.endTime
             : new Date(booking.endTime);
 
-          // Prüfe Überschneidung mit der tatsächlichen Buchungszeit und Reinigungszeit
+          // check for overlap with actual booking time and cleaning time
           const overlaps = !(blockEndDateTime <= bookingStart || startDateTime >= bookingEnd);
           return overlaps;
         });
 
-        // Prüfe auch, ob die Endzeit innerhalb der Öffnungszeiten liegt
+        // check if the end time is within the opening hours
         const withinHours = endDateTime.getHours() < 22 ||
           (endDateTime.getHours() === 22 && endDateTime.getMinutes() === 0);
 
@@ -477,8 +477,17 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
           const startTimeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
           const endTimeStr = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
-          // Berechne Preis für diesen Slot
-          const price = room.pricePerHour * (duration / 60);
+          // calculate price for this slot (with discount if available)
+          let price = room.pricePerHour * (duration / 60);
+
+          // Apply discount if eligible
+          const hasDiscount = !!(room.discountPercentage && room.discountThresholdMinutes);
+          const isDiscountEligible = hasDiscount && duration >= room.discountThresholdMinutes!;
+
+          if (isDiscountEligible) {
+            const discountMultiplier = 1 - (room.discountPercentage! / 100);
+            price = price * discountMultiplier;
+          }
 
           this.availableTimeSlots.push({
             id: slotId,
@@ -494,16 +503,16 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       }
     }
 
-    // Aktualisiere Preisberechnung
+    // update price calculation
     this.updatePricingInfo();
 
-    // WICHTIG: Change Detection nach Slot-Generierung triggern
+    // IMPORTANT: Trigger Change Detection after slot generation
     this.cdr.detectChanges();
   }
 
-  // Slot-Auswahl mit Reservierung (überarbeitet)
+  // slot-selection with reservation 
   selectTimeSlot(slot: AvailableSlot): void {
-    // Vorherige Reservierung aufheben
+    // cancel previoous slot reservation
     this.clearSlotReservation();
 
     this.selectedSlot = slot;
@@ -512,14 +521,14 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       endTime: slot.endTime
     });
 
-    // Aktualisiere Preisberechnung
+    // update price calculation
     this.updatePricingInfo();
 
-    // Starte Reservierungs-Timer
+    // start reservation timer
     this.startSlotReservation();
   }
 
-  // Neue Methode: Preisberechnung mit Discount-Anzeige
+  // price calculation with discount display
   updatePricingInfo(): void {
     this.room$.pipe(take(1)).subscribe((room) => {
       if (!room || !this.selectedDuration) {
@@ -527,20 +536,40 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       }
 
       const basePrice = (this.selectedDuration / 60) * room.pricePerHour;
-      const fullDayPrice = 8 * room.pricePerHour * 0.9; // 10% Rabatt
-      const savings = (8 * room.pricePerHour) - fullDayPrice;
+      let currentPrice = basePrice;
+
+      // Check if discount should be applied
+      const hasDiscount = !!(room.discountPercentage && room.discountThresholdMinutes);
+      const isDiscountEligible = hasDiscount && this.selectedDuration >= room.discountThresholdMinutes!;
+
+      if (isDiscountEligible) {
+        // Apply the room's discount percentage
+        const discountMultiplier = 1 - (room.discountPercentage! / 100);
+        currentPrice = basePrice * discountMultiplier;
+      }
+
+      // Calculate full day pricing (8 hours)
+      const fullDayBasePrice = 8 * room.pricePerHour;
+      let fullDayPrice = fullDayBasePrice;
+
+      if (hasDiscount && 480 >= room.discountThresholdMinutes!) {
+        const discountMultiplier = 1 - (room.discountPercentage! / 100);
+        fullDayPrice = fullDayBasePrice * discountMultiplier;
+      }
+
+      const savings = fullDayBasePrice - fullDayPrice;
 
       this.pricingInfo = {
-        currentPrice: basePrice,
+        currentPrice: currentPrice,
         fullDayPrice: fullDayPrice,
         savings: savings,
-        discountPercentage: 10,
-        showFullDayOffer: this.selectedDuration < 480 // Zeige nur wenn weniger als 8h
+        discountPercentage: room.discountPercentage || 0,
+        showFullDayOffer: hasDiscount && this.selectedDuration < 480 // show only if discount is applicable
       };
     });
   }
 
-  // Neue Methode: Slider-Änderung behandeln
+  // handle slider change
   onSliderChange(event: any): void {
     const newValue = event.target?.value || event.value;
     this.selectedDuration = parseInt(newValue, 10);
@@ -551,7 +580,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     this.updateBracketDuration(this.selectedDuration);
   }
 
-  // === BRACKET-TIMELINE-METHODEN ===
+  // === BRACKET-TIMELINE-METHODS ===
 
   // Update bracket duration and recalculate constraints
   updateBracketDuration(newDuration: number): void {
@@ -570,7 +599,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
 
   // Initialize timeline configuration based on room settings
   initializeTimeline(room: Room): void {
-    // CRITICAL FIX: Ensure stepInterval matches slider exactly
+    // IMPORTANT: Ensure stepInterval matches slider exactly
     this.timelineConfig.stepInterval = room.steps || 30;
     this.timelineConfig.pixelsPerMinute = this.calculatePixelsPerMinute();
 
@@ -725,7 +754,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     const maxStartMinutes = this.timelineConfig.totalMinutes - this.timelineBracket.duration;
     const clampedStartMinutes = Math.max(0, Math.min(snappedMinutes, maxStartMinutes));
 
-    // CRITICAL FIX: Update bracket time data
+    // IMPORTANT: Update bracket time data
     this.timelineBracket.startTimeMinutes = clampedStartMinutes;
     this.timelineBracket.endTimeMinutes = clampedStartMinutes + this.timelineBracket.duration;
 
@@ -808,14 +837,14 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     const position = this.timelineBracket.position;
     const availability = this.timelineBracket.availability;
 
-    let backgroundColor = '#4CAF50'; // Green - available
+    let backgroundColor = '#4CAF50'; // Green = available
     let borderColor = '#4CAF50';
 
     if (availability.status === 'conflict') {
-      backgroundColor = '#FF9800'; // Orange - conflict
+      backgroundColor = '#FF9800'; // Orange = conflict
       borderColor = '#FF9800';
     } else if (availability.status === 'blocked') {
-      backgroundColor = '#f44336'; // Red - blocked
+      backgroundColor = '#f44336'; // Red = blocked
       borderColor = '#f44336';
     }
 
@@ -870,7 +899,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return marks;
   }
 
-  // Starte Slot-Reservierung mit Timer (überarbeitet)
+  // start slot-reservation with timer
   startSlotReservation(): void {
     const now = new Date();
     this.reservationTimer.expiresAt = new Date(now.getTime() + this.RESERVATION_DURATION * 1000);
@@ -894,7 +923,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     }, 1000);
   }
 
-  // Räume Slot-Reservierung auf (überarbeitet)
+  // tidy up slot reservation
   clearSlotReservation(): void {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
@@ -908,6 +937,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   }
 
   // Verlängere Reservierung um weitere 10 Minuten
+  // refresh reservation timer
   extendReservation(): void {
     if (this.selectedSlot) {
       this.startSlotReservation();
@@ -917,17 +947,17 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // Zurücksetzen aller Auswahl (überarbeitet)
+  // reset all selections
   resetSelection(): void {
     this.clearSlotReservation();
     this.selectedSlot = null;
-    // selectedDuration bleibt erhalten (wird durch Slider kontrolliert)
+    // keep selectedDuration (controlled by slider)
     this.availableTimeSlots = [];
     this.timeFormGroup.patchValue({
       startTime: '',
       endTime: ''
     });
-    // Setze Pricing-Info zurück
+    // reset pricing info
     this.pricingInfo = {
       currentPrice: 0,
       fullDayPrice: 0,
@@ -938,7 +968,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
   }
 
-  // Validator für Zeitbereich (Ende muss nach Start liegen)
+  // validator for time range (end must be after start)
   timeRangeValidator(group: FormGroup): { [key: string]: any } | null {
     const startTime = group.get('startTime')?.value;
     const endTime = group.get('endTime')?.value;
@@ -947,11 +977,11 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       return null;
     }
 
-    // Parse Zeitstrings
+    // parse time strings
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
 
-    // Vergleiche Stunden und Minuten
+    // compare hours and minutes
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
 
@@ -962,9 +992,10 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return null;
   }
 
-  // Helper-Methoden für Template
+  // Helper-Methodes for Template
   getDurationLabel(duration: number): string {
     // Schutz vor undefined/null/NaN Werten
+    // protect from undefined/null/NaN values
     if (!duration || isNaN(duration) || duration <= 0) {
       return '0 Min';
     }
@@ -982,7 +1013,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // Formatiere verbleibende Reservierungszeit (überarbeitet)
+  // format remaining reservation time
   getFormattedReservationTime(): string {
     const totalSeconds = this.reservationTimer.remainingSeconds;
     const minutes = Math.floor(totalSeconds / 60);
@@ -990,12 +1021,12 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  // Prüfe ob ein Slot ausgewählt ist
+  // check if a slot is selected
   isSlotSelected(slot: AvailableSlot): boolean {
     return this.selectedSlot?.id === slot.id;
   }
 
-  // Getter für Template-Zugriff
+  // Getter for Template-Access
   get hasActiveReservation(): boolean {
     return this.reservationTimer.remainingSeconds > 0;
   }
@@ -1004,11 +1035,22 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return this.pricingInfo.currentPrice;
   }
 
+  // Helper method to check if discount is applied for current selection
+  isDiscountApplied(): boolean {
+    let result = false;
+    this.room$.pipe(take(1)).subscribe((room) => {
+      if (room && room.discountPercentage && room.discountThresholdMinutes) {
+        result = this.selectedDuration >= room.discountThresholdMinutes;
+      }
+    });
+    return result;
+  }
 
 
 
 
-  // Kombiniere Datum und Zeit zu einem Date-Objekt
+
+  // combine date and time to a Date object
   private combineDateTime(date: Date, timeStr: string): Date {
     const [hours, minutes] = timeStr.split(':').map(Number);
     const dateTime = new Date(date);
@@ -1016,7 +1058,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return dateTime;
   }
 
-  // Prüfen, ob die Mindestdauer für den Raum eingehalten wird
+  // check if the minimum duration for the room is met
   private checkMinDuration(
     startDateTime: Date,
     endDateTime: Date,
@@ -1027,12 +1069,12 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return durationMinutes >= minDuration;
   }
 
-  // Formatiere den Preis für die Anzeige
+  // format the price for display
   formatPrice(price: number): string {
     return `${price.toFixed(2)} €`;
   }
 
-  // Lesbarer Roomtyp
+  // readable Room Type
   getRoomTypeLabel(type: Room['type']): string {
     switch (type) {
       case 'meeting':
@@ -1048,19 +1090,19 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // Nächsten Schritt im Stepper validieren
+  // validate next step in stepper
   validateStep(stepIndex: number): boolean {
     switch (stepIndex) {
-      case 0: // Datumsauswahl validieren
+      case 0: // validate date selection
         return this.dateFormGroup.valid;
-      case 1: // Zeitauswahl validieren
+      case 1: // validate time selection
         return this.timeFormGroup.valid;
       default:
         return true;
     }
   }
 
-  // Buchung abschließen
+  // finalize booking
   onSubmit(): void {
     if (this.dateFormGroup.invalid || this.timeFormGroup.invalid) {
       return;
@@ -1069,23 +1111,23 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     this.loading = true;
     this.error = null;
 
-    // Hole Formularwerte
+    // get form values
     const date = this.dateFormGroup.get('date')!.value;
     const startTime = this.timeFormGroup.get('startTime')!.value;
     const endTime = this.timeFormGroup.get('endTime')!.value;
     const notes = this.detailsFormGroup.get('notes')!.value;
 
-    // Erstelle Date-Objekte für Start und Ende
+    // create Date objects for start and end
     const startDateTime = this.combineDateTime(date, startTime);
     const endDateTime = this.combineDateTime(date, endTime);
 
-    // Überprüfe, ob der Benutzer angemeldet ist
+    // check if the user is logged in
     this.authService.user$
       .pipe(
         take(1),
         switchMap((user) => {
           if (!user) {
-            // Wenn nicht angemeldet, zur Login-Seite navigieren
+            // if not logged in, navigate to login page
             this.snackBar
               .open('Bitte melde dich an, um buchen zu können', 'Zum Login', {
                 duration: 5000,
@@ -1098,7 +1140,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
             return of(null);
           }
 
-          // Verfügbarkeit des Raums prüfen
+          // check room availability
           return this.room$.pipe(
             take(1),
             switchMap((room) => {
@@ -1108,7 +1150,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
                 return of(null);
               }
 
-              // Prüfe Mindestdauer
+              // check minimum duration
               if (
                 !this.checkMinDuration(
                   startDateTime,
@@ -1121,7 +1163,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
                 return of(null);
               }
 
-              // Buchung direkt erstellen (Verfügbarkeit wurde bereits bei Slot-Auswahl geprüft)
+              // create booking directly (availability was already checked during slot selection)
               return this.bookingService.createBooking({
                 roomId: room.id!,
                 startTime: startDateTime,
@@ -1138,7 +1180,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
             this.success = true;
             this.loading = false;
 
-            // Erfolgsmeldung und Weiterleitung zur Buchungsdetailseite
+            // success message and redirect to booking detail page
             this.snackBar.open('Buchung erfolgreich erstellt!', 'Schließen', {
               duration: 5000,
               panelClass: 'success-snackbar',
@@ -1155,12 +1197,12 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       });
   }
 
-  // Für die Template-Referenz: Alias für onSubmit
+  // for template reference: alias for onSubmit
   onBookingSubmit(): void {
     this.onSubmit();
   }
 
-  // Zurücksetzen der Zeitauswahl (wird jetzt durch resetSelection ersetzt)
+  // reset of time selection (replaced by resetSelection)
   resetTimeSelection(): void {
     this.resetSelection();
   }

@@ -65,9 +65,10 @@
                     <input matInput
                       [matDatepicker]="picker"
                       formControlName="date"
-                      [min]="minDate" />
+                      [min]="minDate"
+                      placeholder="insert date in dd/mm/yyyy format or choose date picker" />
                     <mat-datepicker-toggle matIconSuffix
-                      [for]="picker"></mat-datepicker-toggle>
+                      [for]="picker" style="margin-right: 0.75rem;"></mat-datepicker-toggle>
                     <mat-datepicker #picker></mat-datepicker>
                     <mat-error *ngIf="dateFormGroup.get('date')?.hasError('required')">
                       Bitte wähle ein Datum aus
@@ -97,7 +98,7 @@
                 </div>
               </form>
             </mat-step>
-            <!-- Schritt 2: Zeitfenster wählen (REVOLUTIONÄRES BRACKET-SYSTEM) -->
+            <!-- Schritt 2: Zeitfenster wählen -->
             <mat-step [stepControl]="timeFormGroup">
               <ng-template matStepLabel>Zeitfenster wählen</ng-template>
 
@@ -141,6 +142,20 @@
                           <div class="current-price">
                             <mat-icon>euro</mat-icon>
                             <span><strong>{{ formatPrice(pricingInfo.currentPrice) }}</strong> ({{ formatPrice(room.pricePerHour) }}/h)</span>
+                          </div>
+
+                          <!-- Discount Applied Indicator -->
+                          <div class="discount-applied" 
+                            *ngIf="isDiscountApplied() && room.discountPercentage">
+                            <mat-icon>check_circle</mat-icon>
+                            <span><strong>{{ room.discountPercentage }}% Rabatt angewendet!</strong></span>
+                          </div>
+
+                          <!-- Discount Eligibility Info -->
+                          <div class="discount-info" 
+                            *ngIf="!isDiscountApplied() && room.discountPercentage && room.discountThresholdMinutes">
+                            <mat-icon>info</mat-icon>
+                            <span>{{ room.discountPercentage }}% Rabatt ab {{ getDurationLabel(room.discountThresholdMinutes) }}</span>
                           </div>
 
                           <div class="fullday-offer"

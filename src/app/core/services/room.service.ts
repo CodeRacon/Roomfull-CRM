@@ -197,6 +197,8 @@ export class RoomService {
               minDuration: 30, // 30 minutes minimum
               pricePerHour: 20,
               pricePerDay: 140,
+              discountPercentage: 20,
+              discountThresholdMinutes: 180, // 3 hours
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
@@ -211,6 +213,8 @@ export class RoomService {
               pricePerHour: 40,
               pricePerDay: 250,
               pricePerWeek: 1000,
+              discountPercentage: 15,
+              discountThresholdMinutes: 240, // 4 hours
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
@@ -263,6 +267,7 @@ export class RoomService {
               pricePerHour: 10,
               pricePerDay: 60,
               discountPercentage: 10,
+              discountThresholdMinutes: 480, // 8 hours
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
