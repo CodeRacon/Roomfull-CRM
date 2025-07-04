@@ -418,7 +418,7 @@
   padding: 20px;
   margin: 24px 0;
   background-color: rgba(var(--sys-primary), 0.1);
-  border: 2px solid var(--sys-primary);
+  border: 5px solid var(--sys-primary);
   border-radius: 12px;
   color: var(--sys-primary);
   font-weight: 500;
@@ -838,54 +838,48 @@
   }
 }
 
-// Existing Bookings Visualization
+// Existing Bookings Visualization - GRAY SEMI-TRANSPARENT BLOCKS
 .existing-bookings {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 2;
+  z-index: 8; 
 
   .booking-block {
     position: absolute;
-    top: 10%;
-    height: 80%;
-    background: repeating-linear-gradient(
-      45deg,
-      rgba(var(--sys-error), 0.6),
-      rgba(var(--sys-error), 0.6) 8px,
-      rgba(var(--sys-error), 0.4) 8px,
-      rgba(var(--sys-error), 0.4) 16px
-    );
-    border: 2px solid var(--sys-error);
+    top: 25%;
+    height: 65%; 
+    background: rgba(158, 158, 158, 0.4); // Gray semi-transparent
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: none;
+    opacity: 0.7;
 
     .booking-label {
-      color: var(--sys-on-error);
-      font-size: 0.75rem;
+      color: rgba(97, 97, 97, 0.9);
+      font-size: 0.7rem;
       font-weight: 600;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
     }
   }
 }
 
-// Draggable Bracket - Flatter & Simplified
+// TWO-PART BRACKET: Main Booking + Cleaning Appendix
 .bracket-container {
   position: absolute;
   top: 25%;
-  height: 60%; // Flatter than before (was 90%)
+  height: 65%; 
   z-index: 10;
-  border-radius: 6px;
-  border: 2px solid;
   transition: all 0.2s ease;
   cursor: grab;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   min-width: 60px; // Ensure minimum draggable size
+  display: flex; // Enable two-part layout
+  border-radius: 6px;
 
   &:hover {
     transform: translateY(-1px);
@@ -901,42 +895,83 @@
   }
 
   &.locked {
-    border-style: solid;
+    border: solid 1px var(--sys-outline);
     box-shadow: 0 0 12px rgba(var(--sys-primary), 0.3);
   }
 
-  // Availability States - More subtle
-  &.available {
-    background-color: rgba(var(--sys-tertiary), 0.2);
-    border-color: var(--sys-tertiary);
-
-    &:hover {
-      background-color: rgba(var(--sys-tertiary), 0.3);
+  // MAIN BRACKET - User booking time (PRIMARY green)
+  .bracket-main {
+    position: relative;
+    height: 100%;
+    border-radius: 6px 0 0 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    cursor: grab;
+    
+    // Dynamic width set via [style.width.px]
+    
+    // Availability States for Main Bracket
+    &.available {
+      background-color: rgba(76, 175, 80, 0.5); // Green
+      
+      &:hover {
+        background-color: rgba(76, 175, 80, 0.75);
+      }
+    }
+    
+    &.conflict,
+    &.blocked {
+      background-color: rgba(244, 67, 54, 0.5); // Red
+      
+      &:hover {
+        background-color: rgba(244, 67, 54, 0.75);
+      }
     }
   }
-
-  &.conflict {
-    background-color: rgba(var(--sys-warning), 0.2);
-    border-color: var(--sys-warning);
-
-    &:hover {
-      background-color: rgba(var(--sys-warning), 0.3);
+  
+  // CLEANING APPENDIX - Cleaning time (NEUTRAL beige)
+  .bracket-cleaning {
+    position: relative;
+    height: 100%;
+    background-color: #cfc6ad; // neutral-variant: 80
+    opacity: 0.7;
+    border-radius: 0 6px 6px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab; // Follows main bracket
+    
+    // Cleaning Icon
+    .cleaning-icon {
+      align-content: center;
+      padding: 0.25rem;
+      opacity: 0.8;
+      font-size: 0.875rem;
+      text-align: center;
     }
-  }
-
-  &.blocked {
-    background-color: rgba(var(--sys-error), 0.2);
-    border-color: var(--sys-error);
-    cursor: not-allowed;
-
-    &:hover {
-      background-color: rgba(var(--sys-error), 0.3);
-      transform: none;
+    
+    // Availability States for Cleaning Appendix
+    &.available {
+      background-color: #cfc6ad;
+      opacity: 0.7;
     }
+    
+    &.conflict {
+      background-color: #ff897d;
+      opacity: 0.5;
+    }
+    
+    &.blocked {
+      background-color: #ff5449;
+      opacity: 0.3;
+    }    
   }
 }
 
-// Simplified Bracket Content
+// Bracket Content - Only for Main Bracket
 .bracket-content {
   position: relative;
   height: 100%;
@@ -960,32 +995,6 @@
     color: var(--sys-on-surface-variant);
     font-weight: 500;
     line-height: 1;
-  }
-}
-
-// Conflict Indicators
-.conflict-indicators {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-
-  .conflict-bar {
-    position: absolute;
-    top: 2px;
-    height: calc(100% - 4px);
-    background: repeating-linear-gradient(
-      90deg,
-      rgba(var(--sys-error), 0.8),
-      rgba(var(--sys-error), 0.8) 4px,
-      transparent 4px,
-      transparent 8px
-    );
-    border-left: 2px solid var(--sys-error);
-    border-right: 2px solid var(--sys-error);
-    border-radius: 2px;
   }
 }
 
@@ -1026,7 +1035,7 @@
       }
     }
 
-    // Status Colors
+    // Status Colors - GREEN/RED
     &.available {
       mat-icon,
       .status-label {
@@ -1034,13 +1043,7 @@
       }
     }
 
-    &.conflict {
-      mat-icon,
-      .status-label {
-        color: var(--sys-warning);
-      }
-    }
-
+    &.conflict,
     &.blocked {
       mat-icon,
       .status-label {

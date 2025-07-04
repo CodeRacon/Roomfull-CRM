@@ -66,7 +66,7 @@
                       [matDatepicker]="picker"
                       formControlName="date"
                       [min]="minDate"
-                      placeholder="insert date in dd/mm/yyyy format or choose date picker" />
+                      placeholder="insert date in mm/dd/yyyy format or use date picker" />
                     <mat-datepicker-toggle matIconSuffix
                       [for]="picker" style="margin-right: 0.75rem;"></mat-datepicker-toggle>
                     <mat-datepicker #picker></mat-datepicker>
@@ -134,8 +134,9 @@
                       <div class="pricing-info-box"
                         *ngIf="pricingInfo.currentPrice > 0">
                         <div class="current-selection">
-                          <mat-icon>schedule</mat-icon>
-                          <span><strong>{{ getDurationLabel(selectedDuration) }}</strong> (+ {{ getCleaningTime(room.type) }} Min Reinigung)</span>
+                        <mat-icon>schedule</mat-icon>
+                        <span><strong>{{ getDurationLabel(selectedDuration) }} </strong> (+ {{ getCleaningTime(room.type) }} Min. Cleanup-Time)
+                        </span>
                         </div>
 
                         <div class="price-details">
@@ -212,39 +213,43 @@
                         </div>
                       </div>
 
-                      <!-- Draggable Bracket (Manual Drag Implementation) -->
+                      <!-- TWO-PART BRACKET: Main Booking + Cleaning Appendix -->
                       <div class="bracket-container"
-                        (mousedown)="onBracketMouseDown($event)"
-                        [ngStyle]="getBracketStyles()"
-                        [class.dragging]="isDragging"
-                        [class.locked]="timelineBracket.isLocked"
-                        [class.available]="timelineBracket.availability.status === 'available'"
+                      (mousedown)="onBracketMouseDown($event)"
+                      [ngStyle]="getBracketStyles()"
+                      [class.dragging]="isDragging"
+                      [class.locked]="timelineBracket.isLocked"
+                      title="Klicken und ziehen um Zeit zu ändern"
+                      style="cursor: grab"
+                      [style.cursor]="isDragging ? 'grabbing' : 'grab'">
+
+                      <!-- Main Bracket (User booking time) -->
+                      <div class="bracket-main"
+                           [class.available]="timelineBracket.availability.status === 'available'"
                         [class.conflict]="timelineBracket.availability.status === 'conflict'"
                         [class.blocked]="timelineBracket.availability.status === 'blocked'"
-                        title="Klicken und ziehen um Zeit zu ändern"
-                        style="cursor: grab"
-                        [style.cursor]="isDragging ? 'grabbing' : 'grab'">
-
-                        <!-- Simplified Bracket Content -->
-                        <div class="bracket-content">
-                          <div class="bracket-time-display">
-                            {{ getBracketTimeDisplay() }}
-                          </div>
+                      [style.width.px]="timelineBracket.mainWidthPixels">
+                      
+                      <div class="bracket-content">
+                        <div class="bracket-time-display">
+                          {{ getBracketTimeDisplay() }}
+                        </div>
                           <div class="bracket-duration-display">
                             {{ getDurationLabel(timelineBracket.duration) }}
-                          </div>
+                            </div>
+                            </div>
                         </div>
-
-                        <!-- Conflict Indicators -->
-                        <div class="conflict-indicators"
-                          *ngIf="timelineBracket.availability.conflictRanges.length > 0">
-                          <div class="conflict-bar"
-                            *ngFor="let conflict of timelineBracket.availability.conflictRanges"
-                            [style.left.px]="(conflict.startMinutes - timelineBracket.startTimeMinutes) * timelineConfig.pixelsPerMinute"
-                            [style.width.px]="(conflict.endMinutes - conflict.startMinutes) * timelineConfig.pixelsPerMinute">
-                          </div>
+                        
+                        <!-- Cleaning Appendix -->
+                        <div class="bracket-cleaning" [class.available]="timelineBracket.availability.status === 'available'"
+                        [class.conflict]="timelineBracket.availability.status === 'conflict'"
+                        [class.blocked]="timelineBracket.availability.status === 'blocked'"
+                        [style.width.px]="timelineBracket.cleaningWidthPixels"
+                        matTooltip="Obligatorische Reinigungszeit ({{ timelineBracket.cleaningTimeMinutes }} Min.)" matTooltipPosition="below">
+                        
+                          <mat-icon class="cleaning-icon">cleaning_services</mat-icon>
                         </div>
-                      </div>
+                        </div>
                     </div>
                     </div>
 
@@ -256,18 +261,12 @@
                         [class.blocked]="timelineBracket.availability.status === 'blocked'">
 
                         <mat-icon>
-                          {{ timelineBracket.availability.status === 'available' ? 'check_circle' :
-                             timelineBracket.availability.status === 'conflict' ? 'warning' : 'cancel' }}
+                          {{ timelineBracket.availability.status === 'available' ? 'check_circle' : 'cancel' }}
                         </mat-icon>
 
                         <div class="status-text">
                           <span class="status-label">
-                            {{ timelineBracket.availability.status === 'available' ? 'VERFÜGBAR' :
-                               timelineBracket.availability.status === 'conflict' ? 'KONFLIKT' : 'BELEGT' }}
-                          </span>
-                          <span class="availability-score"
-                            *ngIf="timelineBracket.availability.status === 'conflict'">
-                            {{ timelineBracket.availability.availabilityScore }}% verfügbar
+                            {{ timelineBracket.availability.status === 'available' ? 'VERFÜGBAR' : 'BELEGT' }}
                           </span>
                         </div>
                       </div>

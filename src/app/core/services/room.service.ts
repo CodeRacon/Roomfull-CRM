@@ -187,7 +187,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 30 // FIXED: 30-minute steps for meetings
+              steps: 30, // FIXED: 30-minute steps for meetings
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
             {
               name: "Drake's Fortune",
@@ -202,7 +203,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 30 // FIXED: 30-minute steps for meetings
+              steps: 30, // FIXED: 30-minute steps for meetings
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
             {
               name: 'Monteriggioni',
@@ -218,7 +220,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 60 // FIXED: 60-minute steps for offices
+              steps: 60, // FIXED: 60-minute steps for offices
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
             {
               name: 'Jackson',
@@ -232,7 +235,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 60 // FIXED: 60-minute steps for offices
+              steps: 60, // FIXED: 60-minute steps for offices
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
             {
               name: "Ellie's Hideout",
@@ -244,7 +248,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 15 // FIXED: 15-minute steps for booths
+              steps: 15, // FIXED: 15-minute steps for booths
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
             {
               name: "Joel's Workshop",
@@ -256,7 +261,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 15 // FIXED: 15-minute steps for booths
+              steps: 15, // FIXED: 15-minute steps for booths
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
             {
               name: 'Animus',
@@ -271,7 +277,8 @@ export class RoomService {
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
-              steps: 30 // FIXED: 30-minute steps for open_world
+              steps: 30, // FIXED: 30-minute steps for open_world
+              bracketSteps: 15 // 15-minute steps for bracket snapping
             },
           ];
 
