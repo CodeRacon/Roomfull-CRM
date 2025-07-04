@@ -222,6 +222,48 @@
       }
     }
 
+    .discount-applied {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background-color: rgba(var(--sys-tertiary), 0.2);
+      border: 1px solid var(--sys-tertiary);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--sys-tertiary);
+
+      mat-icon {
+        color: var(--sys-tertiary);
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      strong {
+        color: var(--sys-tertiary);
+      }
+    }
+
+    .discount-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background-color: rgba(var(--sys-primary), 0.1);
+      border: 1px solid rgba(var(--sys-primary), 0.3);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--sys-primary);
+
+      mat-icon {
+        color: var(--sys-primary);
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+
     .fullday-offer {
       display: flex;
       align-items: center;
@@ -593,6 +635,18 @@
     padding: 16px;
 
     .price-details {
+      .discount-applied,
+      .discount-info {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+      }
+
       .fullday-offer {
         padding: 8px;
         font-size: 0.85rem;

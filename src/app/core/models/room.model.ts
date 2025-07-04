@@ -10,6 +10,7 @@ export interface Room {
   pricePerDay?: number;
   pricePerWeek?: number;
   discountPercentage?: number;
+  discountThresholdMinutes?: number; // minimum duration in minutes to apply discount
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
