@@ -32,6 +32,18 @@ export class BookingService {
     private roomService: RoomService
   ) {}
 
+  // NEW: Get buffer times for room type
+  private getBufferTimes(roomType: string): { before: number; after: number } {
+    const bufferConfig = {
+      'meeting': { before: 0, after: 15 },
+      'office': { before: 0, after: 15 },
+      'booth': { before: 0, after: 10 },
+      'open_world': { before: 0, after: 5 }
+    };
+    
+    return bufferConfig[roomType as keyof typeof bufferConfig] || { before: 0, after: 0 };
+  }
+
   // Get all bookings for the current user
   getUserBookings(): Observable<Booking[]> {
     return this.authService.user$.pipe(
@@ -69,6 +81,7 @@ export class BookingService {
     startTime: Date;
     endTime: Date;
     notes?: string;
+    roomType?: string; // NEW: for buffer time calculation
   }): Observable<string> {
     return this.authService.user$.pipe(
       switchMap((user) => {
@@ -103,6 +116,11 @@ export class BookingService {
             // Calculate price
             const price = room.pricePerHour * durationHours;
 
+            // Calculate buffer times based on room type
+            const bufferTimes = this.getBufferTimes(room.type);
+            const blockStartTime = new Date(bookingData.startTime.getTime() - (bufferTimes.before * 60000));
+            const blockEndTime = new Date(bookingData.endTime.getTime() + (bufferTimes.after * 60000));
+
             // Create booking object
             const booking: Omit<Booking, 'id'> = {
               roomId: room.id!,
@@ -116,6 +134,11 @@ export class BookingService {
               userName: user.displayName || user.email, // Denormalized for faster rendering
               createdAt: new Date(),
               updatedAt: new Date(),
+              // NEW: Buffer time fields
+              blockStartTime,
+              blockEndTime,
+              bufferBefore: bufferTimes.before,
+              bufferAfter: bufferTimes.after,
             };
 
             // Add to Firestore
@@ -159,7 +182,8 @@ export class BookingService {
   checkRoomAvailability(
     roomId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
+    roomType?: string // NEW: for buffer time calculation
   ): Observable<boolean> {
     const bookingsCollection = collection(this.firestore, this.collectionName);
 
@@ -173,17 +197,23 @@ export class BookingService {
 
     return collectionData(roomBookingsQuery).pipe(
       map((bookings) => {
+        // Calculate buffer times if roomType is provided
+        const bufferTimes = roomType ? this.getBufferTimes(roomType) : { before: 0, after: 0 };
+        const bufferStartTime = new Date(startTime.getTime() - (bufferTimes.before * 60000));
+        const bufferEndTime = new Date(endTime.getTime() + (bufferTimes.after * 60000));
+
         // Filter overlapping bookings in memory
         const overlappingBookings = bookings.filter((booking) => {
-          const bookingStart = booking['startTime'].toDate
-            ? booking['startTime'].toDate()
-            : new Date(booking['startTime']);
-          const bookingEnd = booking['endTime'].toDate
-            ? booking['endTime'].toDate()
-            : new Date(booking['endTime']);
+          // Use block times if available, otherwise fall back to user times
+          const bookingStart = booking['blockStartTime'] 
+            ? (booking['blockStartTime'].toDate ? booking['blockStartTime'].toDate() : new Date(booking['blockStartTime']))
+            : (booking['startTime'].toDate ? booking['startTime'].toDate() : new Date(booking['startTime']));
+          const bookingEnd = booking['blockEndTime']
+            ? (booking['blockEndTime'].toDate ? booking['blockEndTime'].toDate() : new Date(booking['blockEndTime']))
+            : (booking['endTime'].toDate ? booking['endTime'].toDate() : new Date(booking['endTime']));
 
-          // Check if bookings overlap
-          return bookingStart < endTime && bookingEnd > startTime;
+          // Check if new booking's buffer time overlaps with existing booking's block time
+          return bufferStartTime < bookingEnd && bufferEndTime > bookingStart;
         });
 
         return overlappingBookings.length === 0; // Return true if no overlapping bookings found
@@ -223,17 +253,11 @@ export class BookingService {
   }
 
   getBookingsForRoomAndDate(roomId: string, date: Date): Observable<Booking[]> {
-    console.log('🔍 BookingService.getBookingsForRoomAndDate called');
-    console.log('RoomId:', roomId);
-    console.log('Date:', date);
-    
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
 
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
-
-    console.log('Query date range:', { start: startOfDay, end: endOfDay });
 
     const bookingsCollection = collection(this.firestore, this.collectionName);
 
@@ -246,13 +270,8 @@ export class BookingService {
       where('startTime', '<=', endOfDay)
     );
 
-    console.log('🔍 Executing simplified Firestore query...');
-
     return collectionData(bookingsQuery, { idField: 'id' }).pipe(
       map((bookings: any[]) => {
-        console.log('📨 Raw bookings from Firestore:', bookings.length, 'items');
-        console.log('Raw data:', bookings);
-        
         // Filter clientseitig: stornierte Buchungen und Datum-Überschneidungen
         const filteredBookings = bookings.filter(booking => {
           // Filter cancelled bookings
@@ -273,9 +292,6 @@ export class BookingService {
           
           return overlapsWithDay;
         });
-        
-        console.log('📋 Filtered bookings for day:', filteredBookings.length, 'items');
-        console.log('Filtered bookings:', filteredBookings);
         
         return filteredBookings;
       })
