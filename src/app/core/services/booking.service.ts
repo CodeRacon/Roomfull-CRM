@@ -17,8 +17,10 @@ import {
 } from '@angular/fire/firestore';
 import { Observable, from, map, switchMap, of, combineLatest, catchError } from 'rxjs';
 import { Booking } from '../models/booking.model';
+import { PendingReservation } from '../models/pending-reservation.model';
 import { AuthService } from './auth.service';
 import { RoomService } from './room.service';
+import { PendingReservationService } from './pending-reservation.service';
 
 @Injectable({
   providedIn: 'root',
@@ -29,7 +31,8 @@ export class BookingService {
   constructor(
     private firestore: Firestore,
     private authService: AuthService,
-    private roomService: RoomService
+    private roomService: RoomService,
+    private pendingReservationService: PendingReservationService
   ) {}
 
   // NEW: Get buffer times for room type
@@ -183,7 +186,8 @@ export class BookingService {
     roomId: string,
     startTime: Date,
     endTime: Date,
-    roomType?: string // NEW: for buffer time calculation
+    roomType?: string, 
+    excludeUserId?: string 
   ): Observable<boolean> {
     const bookingsCollection = collection(this.firestore, this.collectionName);
 
@@ -195,8 +199,18 @@ export class BookingService {
       where('status', '!=', 'cancelled')
     );
 
-    return collectionData(roomBookingsQuery).pipe(
-      map((bookings) => {
+    // Combine bookings and pending reservations check
+    return combineLatest([
+      collectionData(roomBookingsQuery),
+      this.pendingReservationService.checkPendingReservationConflicts(
+        roomId, 
+        startTime, 
+        endTime, 
+        roomType,
+        excludeUserId
+      )
+    ]).pipe(
+      map(([bookings, hasPendingConflicts]) => {
         // Calculate buffer times if roomType is provided
         const bufferTimes = roomType ? this.getBufferTimes(roomType) : { before: 0, after: 0 };
         const bufferStartTime = new Date(startTime.getTime() - (bufferTimes.before * 60000));
@@ -216,7 +230,8 @@ export class BookingService {
           return bufferStartTime < bookingEnd && bufferEndTime > bookingStart;
         });
 
-        return overlappingBookings.length === 0; // Return true if no overlapping bookings found
+        // Return true if no overlapping bookings AND no pending reservation conflicts
+        return overlappingBookings.length === 0 && !hasPendingConflicts;
       }),
       catchError((error) => {
         console.error('❌ Error checking room availability:', error);
@@ -296,5 +311,21 @@ export class BookingService {
         return filteredBookings;
       })
     ) as Observable<Booking[]>;
+  }
+
+  // Get both bookings and pending reservations for timeline display
+  getBookingsAndPendingReservationsForRoomAndDate(roomId: string, date: Date): Observable<{
+    bookings: Booking[];
+    pendingReservations: PendingReservation[];
+  }> {
+    return combineLatest([
+      this.getBookingsForRoomAndDate(roomId, date),
+      this.pendingReservationService.getPendingReservationsForRoomAndDate(roomId, date)
+    ]).pipe(
+      map(([bookings, pendingReservations]) => ({
+        bookings,
+        pendingReservations
+      }))
+    );
   }
 }
