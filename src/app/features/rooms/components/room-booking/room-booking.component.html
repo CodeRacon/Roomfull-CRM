@@ -213,6 +213,16 @@
                         </div>
                       </div>
 
+                      <!-- Pending Reservations (Visual Blocks with dashed border) -->
+                      <div class="pending-reservations">
+                        <div class="reservation-block"
+                          *ngFor="let reservation of pendingReservations"
+                          [style.left.px]="getPendingReservationPosition(reservation).left"
+                          [style.width.px]="getPendingReservationPosition(reservation).width">
+                          <span class="reservation-label">Reserviert</span>
+                        </div>
+                      </div>
+
                       <!-- TWO-PART BRACKET: Main Booking + Cleaning Appendix -->
                       <div class="bracket-container"
                       (mousedown)="onBracketMouseDown($event)"
@@ -286,13 +296,13 @@
                     <div class="reservation-timer"
                       *ngIf="hasActiveReservation">
                       <mat-icon>timer</mat-icon>
-                      <span>Ihr Zeitfenster läuft in {{ getFormattedReservationTime() }} ab</span>
+                      <span>Deine Booking-Session läuft in {{ getFormattedReservationTime() }} ab</span>
                       <button mat-stroked-button
                         color="primary"
                         (click)="extendReservation()"
                         class="extend-button">
                         <mat-icon>refresh</mat-icon>
-                        Verlängern
+                        Refresh
                       </button>
                     </div>
                   </div>
@@ -346,7 +356,21 @@
 
             <!-- Schritt 3: Bestätigung und Buchung -->
             <mat-step [stepControl]="detailsFormGroup">
-              <ng-template matStepLabel>Buchung bestätigen</ng-template>
+            <ng-template matStepLabel>Buchung bestätigen</ng-template>
+
+            <!-- Timer Display in Confirmation Step -->
+            <div *ngIf="reservationTimer.remainingSeconds > 0" class="reservation-timer confirmation-timer">
+              <div class="timer-content">
+                <mat-icon class="timer-icon">schedule</mat-icon>
+                <span class="timer-text">
+                  Deine Booking-Session läuft in <strong>{{ getFormattedReservationTime() }}</strong> ab
+                </span>
+                <button mat-stroked-button color="primary" class="extend-button" (click)="extendReservation()">
+                  <mat-icon>refresh</mat-icon>
+                  Refresh
+                </button>
+              </div>
+            </div>
 
               <form [formGroup]="detailsFormGroup">
                 <div class="step-content">

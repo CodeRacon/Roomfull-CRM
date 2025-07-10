@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -16,7 +16,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSliderModule } from '@angular/material/slider';
@@ -29,8 +29,10 @@ import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDragMove } from '@angular/c
 import { RoomService } from '../../../../core/services/room.service';
 import { BookingService } from '../../../../core/services/booking.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { PendingReservationService } from '../../../../core/services/pending-reservation.service';
 import { Room } from '../../../../core/models/room.model';
 import { Booking } from '../../../../core/models/booking.model';
+import { PendingReservation } from '../../../../core/models/pending-reservation.model';
 import { BookingTimeSlot, TimeRange, BookingAvailability, BufferTimeConfig } from '../../../../core/models/booking-time-slot.model';
 import {
   Observable,
@@ -170,8 +172,9 @@ interface TimelineConfig {
   styleUrl: './room-booking.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RoomBookingComponent implements OnInit, AfterViewInit {
+export class RoomBookingComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('timelineContainer', { static: false }) timelineContainerRef!: ElementRef<HTMLElement>;
+  @ViewChild('stepper', { static: false }) stepper!: MatStepper;
   // observable for room data
   room$!: Observable<Room | null>;
 
@@ -204,7 +207,8 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     remainingSeconds: 0
   };
   private timerInterval: any = null;
-  private readonly RESERVATION_DURATION = 10 * 60; // 10 Minutes in Seconds
+  private readonly RESERVATION_DURATION = 2 * 60; // 3 Minutes in Seconds
+  private currentPendingReservationId: string | null = null; // Track current pending reservation
 
   // price calculation
   pricingInfo: PricingInfo = {
@@ -216,6 +220,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   };
 
   bookings: Booking[] = []; // existing booking for the chosen date
+  pendingReservations: PendingReservation[] = []; // pending reservations for the chosen date
 
   // === BRACKET-TIMELINE-SYSTEM ===
   timelineConfig: TimelineConfig = {
@@ -260,6 +265,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     private roomService: RoomService,
     private bookingService: BookingService,
     private authService: AuthService,
+    private pendingReservationService: PendingReservationService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
   ) {
@@ -372,7 +378,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   getBufferTimeConfig(roomType: Room['type']): BufferTimeConfig {
     const roomTypeBuffers = {
       'meeting': { before: 0, after: 15 },
-      'office': { before: 0, after: 30 },
+      'office': { before: 0, after: 15 },
       'booth': { before: 0, after: 15 },
       'open_world': { before: 0, after: 0 }
     };
@@ -454,11 +460,11 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
 
     combineLatest([
       this.room$,
-      this.bookingService.getBookingsForRoomAndDate(roomId, this.selectedDate),
+      this.bookingService.getBookingsAndPendingReservationsForRoomAndDate(roomId, this.selectedDate),
     ])
       .pipe(take(1))
       .subscribe({
-        next: ([room, bookings]) => {
+        next: ([room, data]) => {
           if (!room) {
             this.error = 'Raum konnte nicht geladen werden';
             this.loading = false;
@@ -467,8 +473,14 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
           }
 
           // Room steps fallback is now handled in RoomService - clean architecture!
-          this.bookings = bookings;
-          this.generateAvailableSlots(this.selectedDate!, room, bookings);
+          this.bookings = data.bookings;
+
+          // Filter out own pending reservations from timeline display
+          this.pendingReservations = data.pendingReservations.filter(reservation =>
+            reservation.id !== this.currentPendingReservationId
+          );
+
+          this.generateAvailableSlots(this.selectedDate!, room, data.bookings);
 
           // Trigger initial collision check for bracket
           this.checkBracketAvailability();
@@ -795,6 +807,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     // Calculate REAL block time range (user time + cleaning time)
     const blockEndMinutes = userEndMinutes + bufferAfter;
 
+    // Check existing bookings
     this.bookings.forEach(booking => {
       // Use block times if available (new bookings), otherwise calculate from user times (backward compatibility)
       let bookingStart, bookingEnd;
@@ -836,6 +849,61 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
         // This is a cleaning time conflict - NO EXCEPTIONS for adjacent bookings
         const conflictStart = Math.max(userStartMinutes, bookingStartMinutes);
         const conflictEnd = Math.min(blockEndMinutes, bookingEndMinutes);
+
+        bufferConflicts.push({
+          startMinutes: conflictStart,
+          endMinutes: conflictEnd,
+          type: 'buffer'
+        });
+      }
+    });
+
+    // Check pending reservations (exclude current user's own reservations)
+    this.pendingReservations.forEach(reservation => {
+      // Skip current user's own pending reservations
+      if (this.currentPendingReservationId && reservation.id === this.currentPendingReservationId) {
+        return;
+      }
+      // Use block times if available, otherwise calculate from user times
+      let reservationStart, reservationEnd;
+
+      if (reservation.blockStartTime && reservation.blockEndTime) {
+        // Reservation with explicit block times
+        reservationStart = this.getMinutesFromMidnight(reservation.blockStartTime);
+        reservationEnd = this.getMinutesFromMidnight(reservation.blockEndTime);
+      } else {
+        // Fallback - calculate block time from user time + room type buffer
+        const userStart = this.getMinutesFromMidnight(reservation.startTime);
+        const userEnd = this.getMinutesFromMidnight(reservation.endTime);
+        const legacyConfig = this.getBufferTimeConfig(roomType);
+
+        reservationStart = userStart;
+        reservationEnd = userEnd + legacyConfig.bufferAfterMinutes!;
+      }
+
+      const reservationStartMinutes = reservationStart - (8 * 60);
+      const reservationEndMinutes = reservationEnd - (8 * 60);
+
+      // For user conflict checking, always use the original user times
+      const userReservationStart = this.getMinutesFromMidnight(reservation.startTime) - (8 * 60);
+      const userReservationEnd = this.getMinutesFromMidnight(reservation.endTime) - (8 * 60);
+
+      // Check user time vs user time conflicts
+      const userConflict = !(userEndMinutes <= userReservationStart || userStartMinutes >= userReservationEnd);
+      if (userConflict) {
+        userConflicts.push({
+          startMinutes: Math.max(userStartMinutes, userReservationStart),
+          endMinutes: Math.min(userEndMinutes, userReservationEnd),
+          type: 'user'
+        });
+      }
+
+      // Check REAL block time conflicts (user time + cleaning time vs pending reservations)
+      const blockConflict = !(blockEndMinutes <= reservationStartMinutes || userStartMinutes >= reservationEndMinutes);
+      if (blockConflict && !userConflict) {
+        // This is a cleaning time conflict with pending reservation
+        const conflictStart = Math.max(userStartMinutes, reservationStartMinutes);
+        const conflictEnd = Math.min(blockEndMinutes, reservationEndMinutes);
 
         bufferConflicts.push({
           startMinutes: conflictStart,
@@ -980,11 +1048,17 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   lockBracketPosition(): void {
     if (!this.timelineBracket.availability.canConfirm) return;
 
+    // Prevent multiple locks - if already locked, don't create another reservation
+    if (this.timelineBracket.isLocked || this.currentPendingReservationId) {
+      console.log('⚠️ Bracket already locked or reservation exists');
+      return;
+    }
+
     this.timelineBracket.isLocked = true;
     this.updateFormFromBracket();
 
-    // Start reservation timer
-    this.startSlotReservation();
+    // Create pending reservation and start timer
+    this.createPendingReservationAndStartTimer();
   }
 
   // Update form controls from bracket position
@@ -1004,6 +1078,17 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     const hours = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  }
+
+  // Create Date object from time string and selected date
+  createDateFromTimeString(timeString: string): Date | null {
+    if (!timeString || !this.selectedDate) return null;
+
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date(this.selectedDate);
+    date.setHours(hours, minutes, 0, 0);
+
+    return date;
   }
 
   // Get formatted time display for bracket
@@ -1050,6 +1135,30 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     };
   }
 
+  // Get pending reservation visual position
+  getPendingReservationPosition(reservation: PendingReservation): { left: number; width: number } {
+    // Use block times if available (includes cleaning time), otherwise fall back to user times
+    let startTime, endTime;
+
+    if (reservation.blockStartTime && reservation.blockEndTime) {
+      // Reservation with explicit block times (includes cleaning time)
+      startTime = reservation.blockStartTime;
+      endTime = reservation.blockEndTime;
+    } else {
+      // Fallback to user times
+      startTime = reservation.startTime;
+      endTime = reservation.endTime;
+    }
+
+    const startMinutes = this.getMinutesFromMidnight(startTime) - (8 * 60); // Subtract 08:00 offset
+    const endMinutes = this.getMinutesFromMidnight(endTime) - (8 * 60);
+
+    return {
+      left: Math.max(0, startMinutes * this.timelineConfig.pixelsPerMinute),
+      width: Math.max(0, (endMinutes - startMinutes) * this.timelineConfig.pixelsPerMinute)
+    };
+  }
+
   // === ENHANCED GRID SYSTEM ===
 
   // Get half-hour marks (e.g., 8:30, 9:30, etc.)
@@ -1081,6 +1190,45 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     return marks;
   }
 
+  // NEW: Create pending reservation and start timer
+  createPendingReservationAndStartTimer(): void {
+    const roomId = this.route.snapshot.paramMap.get('id')!;
+    const startTime = this.createDateFromTimeString(this.timeFormGroup.get('startTime')?.value);
+    const endTime = this.createDateFromTimeString(this.timeFormGroup.get('endTime')?.value);
+
+    if (!startTime || !endTime || !this.selectedDate) {
+      console.error('Missing required data for pending reservation');
+      return;
+    }
+
+    // Create pending reservation
+    this.room$.pipe(take(1)).subscribe(room => {
+      if (!room) return;
+
+      const reservationData = {
+        roomId: roomId,
+        startTime: startTime,
+        endTime: endTime,
+        notes: '',
+        roomType: room.type
+      };
+
+      this.pendingReservationService.createPendingReservation(reservationData).subscribe({
+        next: (reservationId) => {
+          console.log('✅ Pending reservation created:', reservationId);
+          this.currentPendingReservationId = reservationId; // Track the reservation ID
+          this.startSlotReservation();
+          // DON'T refresh timeline - causes infinite loop!
+          // Other users will see the reservation automatically via real-time updates
+        },
+        error: (error) => {
+          console.error('❌ Error creating pending reservation:', error);
+          this.snackBar.open('Fehler beim Reservieren des Zeitfensters', 'OK', { duration: 5000 });
+        }
+      });
+    });
+  }
+
   // start slot-reservation with timer
   startSlotReservation(): void {
     const now = new Date();
@@ -1088,6 +1236,7 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
     this.reservationTimer.remainingSeconds = this.RESERVATION_DURATION;
     this.reservationTimer.selectedSlot = this.selectedSlot;
 
+    // Clear any existing timer to prevent multiple timers
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
@@ -1096,13 +1245,30 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       this.reservationTimer.remainingSeconds -= 1;
 
       if (this.reservationTimer.remainingSeconds <= 0) {
-        this.clearSlotReservation();
-        this.snackBar.open('Slot-Reservierung abgelaufen. Bitte wähle erneut.', 'OK', {
-          duration: 5000
-        });
+        this.handleTimerExpiry();
       }
       this.cdr.detectChanges();
     }, 1000);
+  }
+
+  // handle timer expiry with smart navigation
+  private handleTimerExpiry(): void {
+    const currentStepIndex = this.stepper ? this.stepper.selectedIndex : 0;
+
+    this.clearSlotReservation();
+
+    if (currentStepIndex >= 2) {
+      // If user is in confirmation step, navigate back to time selection
+      this.stepper.selectedIndex = 1;
+      this.snackBar.open('Reservierung abgelaufen. Bitte wähle erneut ein Zeitfenster.', 'OK', {
+        duration: 6000
+      });
+    } else {
+    // If user is in earlier steps, just show message
+    this.snackBar.open('Slot-Reservierung abgelaufen. Bitte wähle erneut.', 'OK', {
+      duration: 5000
+    });
+  }
   }
 
   // tidy up slot reservation
@@ -1116,17 +1282,38 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
       expiresAt: null,
       remainingSeconds: 0
     };
+
+    // Delete current pending reservation if exists
+    if (this.currentPendingReservationId) {
+      const reservationIdToDelete = this.currentPendingReservationId;
+      this.currentPendingReservationId = null; // Clear ID immediately to prevent loops
+
+      this.pendingReservationService.deletePendingReservation(reservationIdToDelete).subscribe({
+        next: () => {
+          console.log('✅ Pending reservation cleared:', reservationIdToDelete);
+          // DON'T refresh timeline - causes loops! Timeline updates automatically via real-time
+        },
+        error: (error) => {
+          console.error('❌ Error clearing pending reservation:', error);
+        }
+      });
+    }
+
+    // FIX: Unlock bracket when timer expires or is cleared
+    this.timelineBracket.isLocked = false;
   }
 
   // refresh reservation timer
   extendReservation(): void {
-    if (this.selectedSlot) {
+    if (this.reservationTimer.selectedSlot || this.timelineBracket.isLocked) {
       this.startSlotReservation();
-      this.snackBar.open('Reservierung um 10 Minuten verlängert', 'OK', {
+      this.snackBar.open(`Reservierung um ${this.RESERVATION_DURATION / 60} Minuten verlängert`, 'OK', {
         duration: 3000
       });
     }
   }
+
+
 
   // reset all selections
   resetSelection(): void {
@@ -1362,6 +1549,20 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
             this.success = true;
             this.loading = false;
 
+            // Clear pending reservation after successful booking
+            if (this.currentPendingReservationId) {
+              this.pendingReservationService.deletePendingReservation(this.currentPendingReservationId).subscribe({
+                next: () => {
+                  console.log('✅ Pending reservation converted to booking');
+                  this.currentPendingReservationId = null;
+                },
+                error: (error) => {
+                  console.error('❌ Error clearing pending reservation after booking:', error);
+                  this.currentPendingReservationId = null;
+                }
+              });
+            }
+
             // success message and redirect to booking detail page
             this.snackBar.open('Buchung erfolgreich erstellt!', 'Schließen', {
               duration: 5000,
@@ -1387,5 +1588,10 @@ export class RoomBookingComponent implements OnInit, AfterViewInit {
   // reset of time selection (replaced by resetSelection)
   resetTimeSelection(): void {
     this.resetSelection();
+  }
+
+  // FIX: Robust cleanup on component destruction
+  ngOnDestroy(): void {
+    this.clearSlotReservation();
   }
 }
